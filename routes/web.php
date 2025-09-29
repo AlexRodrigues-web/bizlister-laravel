@@ -16,3 +16,16 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth'])->name('dashboard');
+
+require __DIR__.'/auth.php';
+
+use App\Http\Controllers\CategoryController;
+
+Route::get('/categorias', [CategoryController::class, 'index'])->name('categories.index');
+Route::get('/categoria/{id}-{slug?}', [CategoryController::class, 'show'])
+    ->whereNumber('id')
+    ->name('categories.show');
