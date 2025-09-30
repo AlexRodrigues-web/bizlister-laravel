@@ -25,19 +25,20 @@ class CityController extends Controller
         // base: todos os negócios da cidade
         $q = Business::where("sid", $city->city_id);
 
-        // filtro por categoria (cat_id)
-        $catId = $request->integer("categoria");
-        if ($catId) {
+        // filtro por categoria (cat_id) - Laravel 8: usar query()+cast
+        $catParam = $request->query("categoria");
+        $catId = is_null($catParam) ? null : (int) $catParam;
+        if (!is_null($catId) && $catId > 0) {
             $q->where("cid", $catId);
         }
 
         // filtro por termo (nome do negócio)
-        $term = trim((string) $request->get("q", ""));
+        $term = trim((string) $request->query("q", ""));
         if ($term !== "") {
             $q->where("business_name", "LIKE", "%".$term."%");
         }
 
-        // ordenação + paginação
+        // ordenação + paginação (preserva filtros na URL)
         $businesses = $q->orderBy("biz_id", "desc")
                         ->paginate(12)
                         ->withQueryString();
