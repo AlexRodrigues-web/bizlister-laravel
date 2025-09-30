@@ -29,3 +29,14 @@ Route::get('/categorias', [CategoryController::class, 'index'])->name('categorie
 Route::get('/categoria/{id}-{slug?}', [CategoryController::class, 'show'])
     ->whereNumber('id')
     ->name('categories.show');
+use App\Http\Controllers\CityController;
+
+Route::get('/cidades', [CityController::class, 'index'])->name('cities.index');
+Route::get('/cidade/{id}-{slug?}', [CityController::class, 'show'])
+    ->whereNumber('id')
+    ->name('cities.show');
+use App\Http\Controllers\BusinessController;
+
+Route::get("/negocio/{id}-{slug?}", [BusinessController::class, "show"])
+    ->whereNumber("id")
+    ->name("business.show");

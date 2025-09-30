@@ -18,3 +18,5 @@
 /.phpunit.result.cache
 /tests/coverage/
 Homestead.yaml
+
+*.bak

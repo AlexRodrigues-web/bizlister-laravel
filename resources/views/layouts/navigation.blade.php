@@ -70,3 +70,6 @@
         </div>
     </div>
 </nav>
+
+<x-nav-link href="{{ url('/cidades') }}" :active="request()->is('cidades*')">{{ __('Cidades') }}</x-nav-link>
+
