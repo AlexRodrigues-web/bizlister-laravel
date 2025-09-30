@@ -8,13 +8,16 @@ class Business extends Model
 {
     protected $table = "business";
     public $timestamps = false;
-
-    // PK correta do legado
     protected $primaryKey = "biz_id";
 
     public function category()
     {
-        // FK local = cid | ownerKey na Category = cat_id
         return $this->belongsTo(Category::class, "cid", "cat_id");
+    }
+
+    public function city()
+    {
+        // FK business.sid -> City.city_id
+        return $this->belongsTo(City::class, "sid", "city_id");
     }
 }
