@@ -18,27 +18,58 @@ class CityController extends Controller
     }
 
     // GET /cidade/{id}-{slug?}
+        // GET /cidade/{id}-{slug?}
     public function show($id, $slug = null, Request $request)
     {
         $city = City::where("city_id", $id)->firstOrFail();
 
-        // base: todos os negócios da cidade
-        $q = Business::where("sid", $city->city_id);
-
-        // filtro por categoria (cat_id) - Laravel 8: usar query()+cast
+        // filtros da querystring
         $catParam = $request->query("categoria");
         $catId = is_null($catParam) ? null : (int) $catParam;
+
+        $term = trim((string) $request->query("q", ""));
+
+        // base: por SID
+        $qSid = Business::where("sid", $city->city_id);
+
         if (!is_null($catId) && $catId > 0) {
-            $q->where("cid", $catId);
+            $qSid->where("cid", $catId);
+        }
+        if ($term !== "") {
+            $qSid->where("business_name", "LIKE", "%".$term."%");
         }
 
-        // filtro por termo (nome do negócio)
+        $businesses = $qSid->orderBy("biz_id", "desc")
+                           ->paginate(12)
+                           ->withQueryString();
+
+        // Fallback: se NÃO há filtros e a busca por SID veio vazia, tenta por nome da cidade
+        $noFilters = (is_null($catId) || $catId <= 0) && ($term === "");
+        if ($noFilters && $businesses->total() === 0) {
+            $qCity = Business::whereRaw("LOWER(TRIM(city)) = LOWER(TRIM(?))", [$city->city]);
+            $businesses = $qCity->orderBy("biz_id", "desc")
+                                ->paginate(12)
+                                ->withQueryString();
+        }
+
+        $categories = \App\Models\Category::orderBy("category")->get();
+
+        return view("cities.show", [
+            "city"        => $city,
+            "businesses"  => $businesses,
+            "categories"  => $categories,
+            "filters"     => [
+                "categoria" => $catId,
+                "q"         => $term,
+            ],
+        ]);
+    }// filtro por termo (nome do negÃ³cio)
         $term = trim((string) $request->query("q", ""));
         if ($term !== "") {
             $q->where("business_name", "LIKE", "%".$term."%");
         }
 
-        // ordenação + paginação (preserva filtros na URL)
+        // ordenaÃ§Ã£o + paginaÃ§Ã£o (preserva filtros na URL)
         $businesses = $q->orderBy("biz_id", "desc")
                         ->paginate(12)
                         ->withQueryString();
