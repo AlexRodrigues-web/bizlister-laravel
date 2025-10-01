@@ -1,22 +1,25 @@
-﻿@extends('layouts.app')
+@extends("layouts.app")
 
-@section('content')
-<div class="max-w-4xl mx-auto py-8 px-4">
-    <h1 class="text-2xl font-bold mb-6">Cidades</h1>
+@section("content")
+<div class="container py-4">
+  <h1 class="mb-3">Cidades</h1>
 
-    <ul class="space-y-2">
-        @foreach($cities as $c)
-            @php
-                $nome = $c->city ?? ('Cidade #'.$c->city_id);
-                $slug = \Illuminate\Support\Str::slug($nome);
-            @endphp
-            <li>
-                <a class="text-blue-600 hover:underline"
-                   href="{{ route('cities.show', ['id' => $c->city_id, 'slug' => $slug]) }}">
-                    {{ $nome }}
-                </a>
-            </li>
-        @endforeach
-    </ul>
+  @if($cities->count())
+    <div class="list-group">
+      @foreach($cities as $c)
+        @php($slug = \Illuminate\Support\Str::slug($c->city))
+        <a class="list-group-item list-group-item-action"
+           href="{{ route('cities.show', [$c->city_id, $slug]) }}">
+          {{ $c->city }}
+        </a>
+      @endforeach
+    </div>
+
+    <div class="mt-3">
+      {{ $cities->withQueryString()->links() }}
+    </div>
+  @else
+    <div class="alert alert-info">Nenhuma cidade cadastrada.</div>
+  @endif
 </div>
 @endsection
