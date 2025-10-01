@@ -6,29 +6,46 @@
         {{ $category->category ?? 'Categoria' }}
     </h1>
 
-    @if($businesses->count())
-        <ul class="divide-y bg-white rounded shadow">
+    @if($businesses->count() > 0)
+        <ul class="space-y-4">
             @foreach($businesses as $biz)
-                <li class="p-4">
-                    <div class="font-semibold text-lg">
+                @php
+                    $slug = \Illuminate\Support\Str::slug($biz->business_name ?? ('negocio-'.$biz->biz_id));
+                @endphp
+                <li class="p-4 border rounded-lg hover:bg-gray-50">
+                    <a class="text-blue-600 hover:underline text-lg font-semibold"
+                       href="{{ route('business.show', ['id' => $biz->biz_id, 'slug' => $slug]) }}">
                         {{ $biz->business_name ?? ('Negócio #'.$biz->biz_id) }}
-                    </div>
-                    <div class="text-sm text-gray-600">
-                        {{ \Illuminate\Support\Str::limit(strip_tags($biz->description ?? ''), 140) }}
+                    </a>
+
+                    @if(!empty($biz->short_description ?? ''))
+                        <p class="text-sm text-gray-600 mt-1">
+                            {{ $biz->short_description }}
+                        </p>
+                    @endif
+
+                    <div class="text-xs text-gray-500 mt-1">
+                        Cidade:
+                        <a class="hover:underline"
+                           href="{{ route('cities.show', ['id' => $biz->sid, 'slug' => \Illuminate\Support\Str::slug($biz->city ?? '')]) }}">
+                           {{ $biz->city ?? '—' }}
+                        </a>
                     </div>
                 </li>
             @endforeach
         </ul>
 
-        <div class="mt-4">
-            {{ $businesses->links() }}
+        <div class="mt-6">
+            {{ $businesses->withQueryString()->links() }}
         </div>
     @else
-        <p>Nenhum negócio nesta categoria.</p>
+        <div class="p-6 border rounded-lg bg-yellow-50">
+            Nenhum negócio nesta categoria.
+        </div>
     @endif
 
     <div class="mt-6">
-        <a href="{{ route('categories.index') }}" class="text-blue-600 hover:underline">&larr; Voltar às categorias</a>
+        <a class="text-sm text-gray-600 hover:underline" href="{{ route('categories.index') }}">← Voltar às categorias</a>
     </div>
 </div>
 @endsection
