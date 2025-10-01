@@ -11,7 +11,7 @@ class CityController extends Controller
     // GET /cidades
     public function index()
 {
-    // Paginação para permitir ->links() e ->withQueryString() na view
+    // PaginaÃ§Ã£o para permitir ->links() e ->withQueryString() na view
     $cities = City::orderBy("city_id")->paginate(24)->withQueryString();
     return view("cities.index", compact("cities"));
 }
@@ -21,7 +21,7 @@ class CityController extends Controller
     {
         $city = City::where("city_id", $id)->firstOrFail();
 
-        // Filtros compatÃ­veis com Laravel 8
+        // Filtros compatÃƒÂ­veis com Laravel 8
         $catParam = $request->query("categoria");
         $catId    = is_null($catParam) ? null : (int) $catParam;
         $q        = trim((string) $request->query("q", ""));
@@ -43,7 +43,7 @@ class CityController extends Controller
                             ->paginate(12)
                             ->withQueryString();
 
-        // Fallback: por texto de cidade se ainda nÃ£o houver resultados (quando sid nÃ£o estÃ¡ 100%)
+        // Fallback: por texto de cidade se ainda nÃƒÂ£o houver resultados (quando sid nÃƒÂ£o estÃƒÂ¡ 100%)
         if ($businesses->total() === 0) {
             $qTxt = Business::whereRaw(
                 "LOWER(TRIM(CONVERT(city USING utf8mb4))) = LOWER(TRIM(?))",
@@ -65,10 +65,10 @@ class CityController extends Controller
                                ->withQueryString();
         }
 
-        // No teu blade atual, as opÃ§Ãµes usam cat_name
-        $categories = Category::orderBy("cat_name")->get(["cat_id","cat_name"]);
+        // No teu blade atual, as opÃƒÂ§ÃƒÂµes usam cat_name
+        $categories = Category::orderBy("category")->get(["cat_id","category"]);
 
-        $pageTitle = "NegÃ³cios em {$city->city}";
+        $pageTitle = "NegÃƒÂ³cios em {$city->city}";
 
         return view("cities.show", compact(
             "city", "businesses", "categories", "q", "catId", "pageTitle"
