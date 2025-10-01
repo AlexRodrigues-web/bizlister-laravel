@@ -11,7 +11,7 @@ class CityController extends Controller
     // GET /cidades
     public function index()
     {
-        // mantém como já usado no projeto
+        // mantém o que você já usa
         $cities = City::orderBy("city_id")->get();
         return view("cities.index", compact("cities"));
     }
@@ -21,29 +21,29 @@ class CityController extends Controller
     {
         $city = City::where("city_id", $id)->firstOrFail();
 
-        // Filtros (compatíveis com Laravel 8)
+        // Filtros compatíveis com Laravel 8
         $catParam = $request->query("categoria");
         $catId    = is_null($catParam) ? null : (int) $catParam;
-        $term     = trim((string) $request->query("q", ""));
+        $q        = trim((string) $request->query("q", ""));
 
         // Base: por SID
-        $qSid = Business::where("sid", $city->city_id);
+        $query = Business::where("sid", $city->city_id);
 
         if (!is_null($catId) && $catId > 0) {
-            $qSid->where("cid", $catId);
+            $query->where("cid", $catId);
         }
-        if ($term !== "") {
-            $qSid->where(function($w) use ($term) {
-                $w->where("business_name", "LIKE", "%{$term}%")
-                  ->orWhere("description", "LIKE", "%{$term}%");
+        if ($q !== "") {
+            $query->where(function($w) use ($q) {
+                $w->where("business_name", "LIKE", "%{$q}%")
+                  ->orWhere("description", "LIKE", "%{$q}%");
             });
         }
 
-        $businesses = $qSid->orderBy("business_name")
-                           ->paginate(12)
-                           ->withQueryString();
+        $businesses = $query->orderBy("business_name")
+                            ->paginate(12)
+                            ->withQueryString();
 
-        // Fallback: por texto de cidade (quando sid ainda não está 100%)
+        // Fallback: por texto de cidade se ainda não houver resultados (quando sid não está 100%)
         if ($businesses->total() === 0) {
             $qTxt = Business::whereRaw(
                 "LOWER(TRIM(CONVERT(city USING utf8mb4))) = LOWER(TRIM(?))",
@@ -53,10 +53,10 @@ class CityController extends Controller
             if (!is_null($catId) && $catId > 0) {
                 $qTxt->where("cid", $catId);
             }
-            if ($term !== "") {
-                $qTxt->where(function($w) use ($term) {
-                    $w->where("business_name", "LIKE", "%{$term}%")
-                      ->orWhere("description", "LIKE", "%{$term}%");
+            if ($q !== "") {
+                $qTxt->where(function($w) use ($q) {
+                    $w->where("business_name", "LIKE", "%{$q}%")
+                      ->orWhere("description", "LIKE", "%{$q}%");
                 });
             }
 
@@ -65,17 +65,13 @@ class CityController extends Controller
                                ->withQueryString();
         }
 
-        // No teu projeto, o nome da coluna é "category"
-        $categories = Category::orderBy("category")->get();
+        // No teu blade atual, as opções usam cat_name
+        $categories = Category::orderBy("cat_name")->get(["cat_id","cat_name"]);
 
-        return view("cities.show", [
-            "city"        => $city,
-            "businesses"  => $businesses,
-            "categories"  => $categories,
-            "filters"     => [
-                "categoria" => $catId,
-                "q"         => $term,
-            ],
-        ]);
+        $pageTitle = "Negócios em {$city->city}";
+
+        return view("cities.show", compact(
+            "city", "businesses", "categories", "q", "catId", "pageTitle"
+        ));
     }
 }
