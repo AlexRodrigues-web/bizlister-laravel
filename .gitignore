@@ -20,3 +20,8 @@
 Homestead.yaml
 
 *.bak
+# backups locais
+*.bak*
+*.bak_*
+*backup*/
+routes/*.bak*
