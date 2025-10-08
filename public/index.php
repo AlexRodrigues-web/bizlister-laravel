@@ -1,4 +1,5 @@
 <?php
+header('Content-Type: text/html; charset=UTF-8');
 
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
