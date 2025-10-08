@@ -1,4 +1,4 @@
-@props(['errors'])
+﻿@props(['errors'])
 
 @if ($errors->any())
     <div {{ $attributes }}>

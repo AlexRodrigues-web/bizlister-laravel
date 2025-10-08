@@ -1,51 +1,36 @@
-﻿@extends('layouts.app')
+﻿@extends("layouts.app")
 
-@section('content')
-<div class="max-w-5xl mx-auto py-8 px-4">
-    <h1 class="text-2xl font-bold mb-6">
-        {{ $category->category ?? 'Categoria' }}
-    </h1>
+@section("content")
+<div class="max-w-6xl mx-auto px-4 py-8">
+  @php
+    $catName = ($category->category ?? $category->cat_name ?? "Categoria");
+  @endphp
+  <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800 mb-6">
+    {{ $catName }}
+  </h1>
 
-    @if($businesses->count() > 0)
-        <ul class="space-y-4">
-            @foreach($businesses as $biz)
-                @php
-                    $slug = \Illuminate\Support\Str::slug($biz->business_name ?? ('negocio-'.$biz->biz_id));
-                @endphp
-                <li class="p-4 border rounded-lg hover:bg-gray-50">
-                    <a class="text-blue-600 hover:underline text-lg font-semibold"
-                       href="{{ route('business.show', ['id' => $biz->biz_id, 'slug' => $slug]) }}">
-                        {{ $biz->business_name ?? ('Negócio #'.$biz->biz_id) }}
-                    </a>
+  @if(isset($businesses) && $businesses->count())
+    <p class="text-sm text-slate-600 mb-4">
+      Resultados: <span class="font-semibold">{{ $businesses->total() }}</span>
+    </p>
 
-                    @if(!empty($biz->short_description ?? ''))
-                        <p class="text-sm text-gray-600 mt-1">
-                            {{ $biz->short_description }}
-                        </p>
-                    @endif
-
-                    <div class="text-xs text-gray-500 mt-1">
-                        Cidade:
-                        <a class="hover:underline"
-                           href="{{ route('cities.show', ['id' => $biz->sid, 'slug' => \Illuminate\Support\Str::slug($biz->city ?? '')]) }}">
-                           {{ $biz->city ?? '—' }}
-                        </a>
-                    </div>
-                </li>
-            @endforeach
-        </ul>
-
-        <div class="mt-6">
-            {{ $businesses->withQueryString()->links() }}
-        </div>
-    @else
-        <div class="p-6 border rounded-lg bg-yellow-50">
-            Nenhum negócio nesta categoria.
-        </div>
-    @endif
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      @foreach($businesses as $biz)
+        <x-biz-card :biz="$biz" />
+      @endforeach
+    </div>
 
     <div class="mt-6">
-        <a class="text-sm text-gray-600 hover:underline" href="{{ route('categories.index') }}">← Voltar às categorias</a>
+      {{ $businesses->withQueryString()->links() }}
     </div>
+  @else
+    <div class="rounded-xl border border-slate-200 bg-white p-6 text-slate-600">
+      Nenhum NegóciosÂ³cio encontrado para esta categoria.
+    </div>
+  @endif
+
+  <div class="mt-8">
+    <a href="{{ route('categories.index') }}" class="text-indigo-600 hover:text-indigo-700">&larr; Voltar para categorias</a>
+  </div>
 </div>
 @endsection

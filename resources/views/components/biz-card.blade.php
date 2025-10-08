@@ -1,14 +1,33 @@
-@props(["biz"])
-@php($slug = \Illuminate\Support\Str::slug($biz->business_name))
-<div class="card h-100 shadow-sm">
-  <div class="card-body">
-    <h5 class="card-title mb-1">
-      <a href="{{ route('business.show', [$biz->biz_id, $slug]) }}">{{ $biz->business_name }}</a>
-    </h5>
-    <p class="text-muted small mb-2">{{ $biz->city ?? "—" }}</p>
-    <p class="card-text">{{ \Illuminate\Support\Str::limit($biz->description ?? "", 140) }}</p>
+﻿@php
+  /** @var \App\Models\Business $biz */
+  use Illuminate\Support\Str;
+
+  $name = $biz->business_name ?? '';
+  $slug = Str::slug($name);
+@endphp
+
+<article class="rounded-2xl border border-slate-200 shadow-sm bg-white overflow-hidden flex flex-col h-full">
+  <div class="p-4 flex-1">
+    <h3 class="text-base font-semibold text-slate-800 leading-snug">
+      <a class="hover:underline" href="{{ route('business.show', [$biz->biz_id, $slug]) }}">
+        {{ $name !== '' ? $name : ('Negócio #'.$biz->biz_id) }}
+      </a>
+    </h3>
+
+    <p class="text-xs text-slate-500 mt-1">{{ $biz->city ?? '—' }}</p>
+
+    <p class="text-sm text-slate-600 mt-3">
+      {{ Str::limit(strip_tags($biz->description ?? ''), 140) }}
+    </p>
   </div>
-  <div class="card-footer bg-white">
-    <a class="btn btn-sm btn-primary" href="{{ route('business.show', [$biz->biz_id, $slug]) }}">Ver detalhes</a>
+
+  <div class="px-4 py-3 border-t border-slate-100 bg-slate-50">
+    <a class="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+       href="{{ route('business.show', [$biz->biz_id, $slug]) }}">
+       Ver detalhes
+       <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+       </svg>
+    </a>
   </div>
-</div>
+</article>

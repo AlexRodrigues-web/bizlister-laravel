@@ -1,48 +1,72 @@
-@extends("layouts.app")
+﻿@extends('layouts.app')
 
-@section("content")
-<div class="container py-4">
-  <h1 class="mb-3">{{ $pageTitle }}</h1>
+@section('content')
+<div class="max-w-6xl mx-auto px-4 py-8">
+  <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800 mb-6">
+    {{ "Negócios em {$city->city}" }}
+  </h1>
 
-  <form method="GET" class="row g-2 mb-4">
-    <div class="col-md-6">
-      <input name="q" value="{{ $q }}" class="form-control" placeholder="Buscar por nome ou descrição...">
+  {{-- Filtros --}}
+  <form method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-3 mb-6">
+    <div class="md:col-span-6">
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="q">Buscar</label>
+      <input
+        id="q"
+        type="text"
+        name="q"
+        value="{{ $q ?? ($filters['q'] ?? '') }}"
+        class="w-full rounded-lg border-slate-300 focus:ring-indigo-500 focus:border-indigo-500"
+        placeholder="Buscar por nome ou descrição...">
     </div>
-    <div class="col-md-4">
-      <select name="categoria" class="form-select">
-        <option value="">Todas as categorias</option>
+
+    <div class="md:col-span-4">
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="categoria">Categoria</label>
+      <select id="categoria" name="categoria"
+              class="w-full rounded-lg border-slate-300 focus:ring-indigo-500 focus:border-indigo-500">
+        <option value="">Todas</option>
         @foreach($categories as $c)
-          <option value="{{ $c->cat_id }}" @selected($catId==$c->cat_id)>{{ $c->cat_name }}</option>
+          <option value="{{ $c->cat_id }}" @selected(($catId ?? ($filters['categoria'] ?? null)) == $c->cat_id)>
+            {{ $c->category ?? $c->cat_name ?? $c->label ?? '' }}
+          </option>
         @endforeach
       </select>
     </div>
-    <div class="col-md-2 d-grid">
-      <button class="btn btn-primary">Filtrar</button>
+
+    <div class="md:col-span-2 flex items-end">
+      <button class="inline-flex justify-center w-full md:w-auto rounded-lg bg-indigo-600 px-5 py-2.5 text-white font-medium hover:bg-indigo-700">
+        Filtrar
+      </button>
     </div>
   </form>
 
-  <p class="text-muted mb-2">
-    Resultados: <strong>{{ $businesses->total() }}</strong> em {{ $city->city }}
-    @if($q) • termo: “{{ $q }}” @endif
-    @if($catId) • categoria: #{{ $catId }} @endif
+  {{-- Resumo --}}
+  <p class="text-sm text-slate-600 mb-4">
+    Resultados:
+    <span class="font-semibold">{{ $businesses->total() }}</span>
+    em <span class="font-semibold">{{ $city->city }}</span>
+    @if(($q ?? ($filters['q'] ?? '')) !== '') • termo: “{{ $q ?? $filters['q'] }}” @endif
+    @if(($catId ?? ($filters['categoria'] ?? null))) • categoria: #{{ $catId ?? $filters['categoria'] }} @endif
   </p>
 
+  {{-- Lista --}}
   @if($businesses->count())
-    <div class="row row-cols-1 row-cols-md-3 g-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       @foreach($businesses as $biz)
-        <div class="col">@include('components.biz-card',['biz'=>$biz])</div>
+        <x-biz-card :biz="$biz" />
       @endforeach
     </div>
 
-    <div class="mt-3">
+    <div class="mt-6">
       {{ $businesses->withQueryString()->links() }}
     </div>
   @else
-    <div class="alert alert-info">Nenhum negócio encontrado com os filtros aplicados.</div>
+    <div class="rounded-xl border border-slate-200 bg-white p-6 text-slate-600">
+      Nenhum negócio encontrado com os filtros aplicados.
+    </div>
   @endif
 
-  <div class="mt-4">
-    <a href="{{ route('cities.index') }}">&larr; Voltar para cidades</a>
+  <div class="mt-8">
+    <a href="{{ route('cities.index') }}" class="text-indigo-600 hover:text-indigo-700">&larr; Voltar para cidades</a>
   </div>
 </div>
 @endsection

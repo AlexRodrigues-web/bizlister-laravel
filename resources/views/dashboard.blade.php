@@ -23,7 +23,7 @@
                 @endphp
                 <ul class="list-disc ml-6">
                     <li>Total de cidades: <strong>{{ $totalCidades }}</strong></li>
-                    <li>Total de negócios: <strong>{{ $totalNegocios }}</strong></li>
+                    <li>Total de Negócios: <strong>{{ $totalNegocios }}</strong></li>
                 </ul>
             </div>
         </div>
