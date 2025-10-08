@@ -34,10 +34,27 @@ class RegisteredUserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+    'name' => ['required','string','max:255'],
+    'email' => ['required','string','email','max:255','unique:users'],
+    'password' => [
+        'required',
+        'string',
+        'confirmed',
+        'min:8',
+        function($attr,$value,$fail){
+            if(!preg_match('/[A-Z]/u', $value)){ $fail(__('validation.password_strength')); }
+        },
+        function($attr,$value,$fail){
+            if(!preg_match('/[a-z]/u', $value)){ $fail(__('validation.password_strength')); }
+        },
+        function($attr,$value,$fail){
+            if(!preg_match('/[0-9]/', $value)){ $fail(__('validation.password_strength')); }
+        },
+        function($attr,$value,$fail){
+            if(!preg_match('/[^A-Za-z0-9]/u', $value)){ $fail(__('validation.password_strength')); }
+        },
+    ],
+]);
 
         $user = User::create([
             'name' => $request->name,
