@@ -1,4 +1,9 @@
-﻿*.php text eol=lf
-*.blade.php text eol=lf
-*.js text eol=lf
-*.css text eol=lf
+﻿# Normalizar finais de linha
+* text=auto
+
+# Scripts bash sempre LF
+*.sh text eol=lf
+*.bash text eol=lf
+
+# PowerShell normalmente CRLF no Windows (opcional)
+*.ps1 text eol=crlf
