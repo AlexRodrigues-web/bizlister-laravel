@@ -1,19 +1,34 @@
 <?php
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreCategoryRequest;
-use App\Http\Requests\UpdateCategoryRequest;
-use App\Models\Category;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class CategoryAdminController extends Controller
 {
+    private function table(): string { return 'category'; }
+
+    private function pk(string $table): string
+    {
+        $rows = DB::select("SHOW KEYS FROM `$table` WHERE Key_name='PRIMARY'");
+        return $rows[0]->Column_name ?? 'id';
+    }
+
     public function index()
     {
-        $items = Category::orderBy('category')->paginate(15);
-        return view('admin.categories.index', compact('items'));
+        $table = $this->table();
+        $pk    = $this->pk($table);
+        $items = DB::table($table)->orderBy($pk)->paginate(15);
+        $cols  = Schema::getColumnListing($table);
+
+        return view('admin.categories.index', [
+            'items' => $items,
+            'pk'    => $pk,
+            'cols'  => $cols,
+        ]);
     }
 
     public function create()
@@ -21,38 +36,64 @@ class CategoryAdminController extends Controller
         return view('admin.categories.create');
     }
 
-    public function store(StoreCategoryRequest $request): RedirectResponse
+    public function store(Request $request)
     {
-        // Aceita nomes legado: category | label | cat_name
-        $name = trim((string) ($request->input('category') ?? $request->input('label') ?? $request->input('cat_name') ?? ''));
-        if ($name === '') {
-            return back()->withErrors(['category' => 'Informe o nome da categoria.'])->withInput();
+        $table = $this->table();
+
+        // Campos prováveis na tabela legacy
+        $data = $request->only(['category','name','title','slug','descricao','description']);
+        $data = array_filter($data, fn($v) => $v !== null && $v !== '');
+
+        if (empty($data)) {
+            return redirect()->back()->withErrors(['category' => 'Informe um nome/título.']);
         }
-        Category::create(['category' => $name]);
-        return redirect()->route('admin.categories.index')->with('success', 'Categoria criada.');
-    }
 
-    public function edit($cat)
-    {
-        $item = Category::where('cat_id', $cat)->firstOrFail();
-        return view('admin.categories.edit', compact('item'));
-    }
-
-    public function update(UpdateCategoryRequest $request, $cat): RedirectResponse
-    {
-        $item = Category::where('cat_id', $cat)->firstOrFail();
-        $name = trim((string) ($request->input('category') ?? $request->input('label') ?? $request->input('cat_name') ?? ''));
-        if ($name === '') {
-            return back()->withErrors(['category' => 'Informe o nome da categoria.'])->withInput();
+        // Preferir gravar em 'category' se existir essa coluna
+        $cols = Schema::getColumnListing($table);
+        if (in_array('category', $cols, true) && !isset($data['category'])) {
+            $data['category'] = $data['name'] ?? $data['title'] ?? null;
         }
-        $item->update(['category' => $name]);
-        return redirect()->route('admin.categories.index')->with('success', 'Categoria atualizada.');
+
+        DB::table($table)->insert($data);
+        return redirect()->route('admin.categories.index')->with('status', 'Categoria criada.');
     }
 
-    public function destroy($cat): RedirectResponse
+    public function edit($id)
     {
-        $item = Category::where('cat_id', $cat)->firstOrFail();
-        $item->delete();
-        return back()->with('success', 'Categoria removida.');
+        $table = $this->table();
+        $pk    = $this->pk($table);
+        $item  = DB::table($table)->where($pk, $id)->first();
+        abort_if(!$item, 404);
+
+        return view('admin.categories.edit', compact('item','pk'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $table = $this->table();
+        $pk    = $this->pk($table);
+
+        $data  = $request->only(['category','name','title','slug','descricao','description']);
+        $data  = array_filter($data, fn($v) => $v !== null && $v !== '');
+
+        if (empty($data)) {
+            return redirect()->back()->withErrors(['category' => 'Nada para atualizar.']);
+        }
+
+        $cols = Schema::getColumnListing($table);
+        if (in_array('category', $cols, true) && !isset($data['category'])) {
+            $data['category'] = $data['name'] ?? $data['title'] ?? null;
+        }
+
+        DB::table($table)->where($pk, $id)->update($data);
+        return redirect()->route('admin.categories.index')->with('status', 'Categoria atualizada.');
+    }
+
+    public function destroy($id)
+    {
+        $table = $this->table();
+        $pk    = $this->pk($table);
+        DB::table($table)->where($pk, $id)->delete();
+        return redirect()->route('admin.categories.index')->with('status', 'Categoria removida.');
     }
 }
