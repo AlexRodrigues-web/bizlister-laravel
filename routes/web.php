@@ -1,4 +1,7 @@
 <?php
+use App\Http\Controllers\Admin\CategoryAdminController;
+use App\Http\Controllers\Admin\CityAdminController;
+
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
@@ -54,4 +57,20 @@ Route::get('/negocio', function () {
 // Admin
 Route::middleware(['auth', 'can:admin'])->group(function () {
     Route::get('/admin', [AdminController::class, 'dashboard'])->name('admin.dashboard');
-});
+});/*
+|----------------------------------------------------------------------
+| Admin CRUD (Categorias, Cidades)
+|----------------------------------------------------------------------
+*/
+Route::middleware(['auth','can:admin'])
+    ->prefix('admin')
+    ->as('admin.')
+    ->group(function () {
+        // dashboard (já existe em outro ponto, mas mantemos aqui se quiser unificar)
+        // Route::get('/', [App\Http\Controllers\AdminController::class, 'dashboard'])->name('dashboard');
+
+        Route::resource('categories', \App\Http\Controllers\Admin\CategoryAdminController::class);
+        Route::resource('cities', \App\Http\Controllers\Admin\CityAdminController::class);
+        // Se tiver o controller de negócios, descomente a seguir:
+        // Route::resource('businesses', \App\Http\Controllers\Admin\BusinessAdminController::class);
+    });
