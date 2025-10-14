@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Providers;
 
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
@@ -18,12 +19,13 @@ class AuthServiceProvider extends ServiceProvider
     /**
      * Register any authentication / authorization services.
      */
-    public function boot()
+    public function boot(): void
     {
         $this->registerPolicies();
 
-        Gate::define('admin', function ($user) {
-            return (bool) ($user->is_admin ?? 0);
+        // Admin por e-mail (sem depender de coluna is_admin)
+        Gate::define('admin', function (\App\Models\User $user) {
+            return in_array($user->email, ['admin@tecinfosp.local']);
         });
     }
 }

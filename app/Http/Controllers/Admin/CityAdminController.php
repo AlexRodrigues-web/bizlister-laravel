@@ -1,98 +1,72 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades.DB;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class CityAdminController extends Controller
 {
-    private function table(): string { return 'city'; }
-
-    private function pk(string $table): string
-    {
-        $rows = DB::select("SHOW KEYS FROM `$table` WHERE Key_name='PRIMARY'");
-        return $rows[0]->Column_name ?? 'id';
-    }
-
+    // GET /admin/cities
     public function index()
     {
-        $table = $this->table();
-        $pk    = $this->pk($table);
-        $items = DB::table($table)->orderBy($pk)->paginate(15);
-        $cols  = Schema::getColumnListing($table);
+        // Tabela legada: city (city_id, city)
+        $items = DB::table("city")
+            ->select("city_id", "city")
+            ->orderBy("city_id")
+            ->paginate(15);
 
-        return view('admin.cities.index', [
-            'items' => $items,
-            'pk'    => $pk,
-            'cols'  => $cols,
-        ]);
+        $pk = "city_id";
+
+        return view("admin.cities.index", compact("items", "pk"));
     }
 
+    // GET /admin/cities/create
     public function create()
     {
-        return view('admin.cities.create');
+        return view("admin.cities.create");
     }
 
+    // POST /admin/cities
     public function store(Request $request)
     {
-        $table = $this->table();
+        $data = $request->validate([
+            "city" => ["required","string","max:190"],
+        ]);
 
-        // Campos prováveis no legado
-        $data = $request->only(['city','name','title','uf','state','slug']);
-        $data = array_filter($data, fn($v) => $v !== null && $v !== '');
+        DB::table("city")->insert(["city" => $data["city"]]);
 
-        if (empty($data)) {
-            return redirect()->back()->withErrors(['city' => 'Informe o nome da cidade.']);
-        }
-
-        $cols = Schema::getColumnListing($table);
-        if (in_array('city', $cols, true) && !isset($data['city'])) {
-            $data['city'] = $data['name'] ?? $data['title'] ?? null;
-        }
-
-        DB::table($table)->insert($data);
-        return redirect()->route('admin.cities.index')->with('status', 'Cidade criada.');
+        return redirect()->route("admin.cities.index")
+                         ->with("status","Cidade criada com sucesso.");
     }
 
+    // GET /admin/cities/{id}/edit
     public function edit($id)
     {
-        $table = $this->table();
-        $pk    = $this->pk($table);
-        $item  = DB::table($table)->where($pk, $id)->first();
-        abort_if(!$item, 404);
-
-        return view('admin.cities.edit', compact('item','pk'));
+        $city = DB::table("city")->where("city_id", $id)->first();
+        abort_unless($city, 404);
+        return view("admin.cities.edit", compact("city"));
     }
 
+    // PUT /admin/cities/{id}
     public function update(Request $request, $id)
     {
-        $table = $this->table();
-        $pk    = $this->pk($table);
+        $data = $request->validate([
+            "city" => ["required","string","max:190"],
+        ]);
 
-        $data  = $request->only(['city','name','title','uf','state','slug']);
-        $data  = array_filter($data, fn($v) => $v !== null && $v !== '');
+        DB::table("city")->where("city_id", $id)->update(["city" => $data["city"]]);
 
-        if (empty($data)) {
-            return redirect()->back()->withErrors(['city' => 'Nada para atualizar.']);
-        }
-
-        $cols = Schema::getColumnListing($table);
-        if (in_array('city', $cols, true) && !isset($data['city'])) {
-            $data['city'] = $data['name'] ?? $data['title'] ?? null;
-        }
-
-        DB::table($table)->where($pk, $id)->update($data);
-        return redirect()->route('admin.cities.index')->with('status', 'Cidade atualizada.');
+        return redirect()->route("admin.cities.index")
+                         ->with("status","Cidade atualizada com sucesso.");
     }
 
+    // DELETE /admin/cities/{id}
     public function destroy($id)
     {
-        $table = $this->table();
-        $pk    = $this->pk($table);
-        DB::table($table)->where($pk, $id)->delete();
-        return redirect()->route('admin.cities.index')->with('status', 'Cidade removida.');
+        DB::table("city")->where("city_id", $id)->delete();
+
+        return redirect()->route("admin.cities.index")
+                         ->with("status","Cidade excluída com sucesso.");
     }
 }

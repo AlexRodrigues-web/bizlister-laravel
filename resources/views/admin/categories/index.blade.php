@@ -1,71 +1,81 @@
-<x-app-layout>
-  <x-slot name="header">
-    <h2 class="font-semibold text-xl leading-tight">Admin — Categorias</h2>
-  </x-slot>
+﻿@extends('layouts.app')
 
-  <div class="py-6 max-w-6xl mx-auto">
-    <div class="mb-4">
-      <a href="{{ route('admin.categories.create') }}" class="px-3 py-2 bg-blue-600 text-white rounded">Nova Categoria</a>
-      <a href="{{ route('admin.dashboard') }}" class="ml-2 px-3 py-2 bg-gray-200 rounded">Voltar ao Admin</a>
-    </div>
+@section('content')
+<div class="max-w-6xl mx-auto p-6">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">Categorias</h1>
+    <a href="{{ route('admin.categories.create') }}"
+       class="inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+      + Nova Categoria
+    </a>
+  </div>
 
-    @php
-      $items = $items ?? collect();
-      $list  = ($items instanceof \Illuminate\Contracts\Pagination\Paginator) ? $items->getCollection() : collect($items);
-      $first = $list->first();
+  @if (session('status'))
+    <div class="mb-4 p-3 rounded bg-green-100 text-green-800">{{ session('status') }}</div>
+  @endif
 
-      $allCols  = $cols ?? [];
-      $hasCol = function(string $c) use ($allCols,$first){
-        return in_array($c,$allCols,true) || (is_object($first) && property_exists($first,$c));
-      };
-      $pick = function(array $cands) use ($hasCol){
-        foreach($cands as $c){ if($hasCol($c)) return $c; }
-        return null;
-      };
+  @php
+    // $items pode vir como $items ou $categories; $pk default = cat_id
+    $items   = $items ?? ($categories ?? collect());
+    $pk      = $pk ?? 'cat_id';
+    $isPager = ($items instanceof \Illuminate\Contracts\Pagination\Paginator)
+            || ($items instanceof \Illuminate\Pagination\LengthAwarePaginator);
+  @endphp
 
-      $pkCol    = $pk ?? 'id';
-      $nameCol  = $pick(['category','name','title']);
-      $slugCol  = $pick(['slug','descricao','description']);
-    @endphp>
-
-    <div class="bg-white shadow rounded overflow-x-auto">
-      <table class="min-w-full">
-        <thead>
-          <tr class="border-b bg-gray-50">
-            <th class="p-3 text-left">ID</th>
-            <th class="p-3 text-left">Nome</th>
-            <th class="p-3 text-left">Slug/Descrição</th>
-            <th class="p-3 text-left">Ações</th>
+  @if (($isPager && $items->count()) || (!$isPager && count($items)))
+    <div class="overflow-x-auto rounded-lg shadow bg-white">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Categoria</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
           </tr>
         </thead>
-        <tbody>
-          @forelse($list as $row)
+        <tbody class="bg-white divide-y divide-gray-100">
+          @foreach($items as $row)
             @php
-              $id   = $row->{$pkCol}   ?? null;
-              $nome = $nameCol ? ($row->{$nameCol} ?? null) : null;
-              $slug = $slugCol ? ($row->{$slugCol} ?? null) : null;
+              $id   = $row->{$pk} ?? $row->id ?? null;
+              $name = $row->category ?? $row->cat_name ?? $row->name ?? ('#'.$id);
             @endphp
-            <tr class="border-b">
-              <td class="p-3">{{ $id }}</td>
-              <td class="p-3">{{ $nome ?? '(sem nome)' }}</td>
-              <td class="p-3">{{ $slug ?? '-' }}</td>
-              <td class="p-3 space-x-2">
-                <a href="{{ route('admin.categories.edit', $id) }}" class="px-2 py-1 bg-yellow-500 text-white rounded">Editar</a>
-                <form action="{{ route('admin.categories.destroy', $id) }}" method="POST" class="inline" onsubmit="return confirm('Remover categoria?');">
-                  @csrf @method('DELETE')
-                  <button class="px-2 py-1 bg-red-600 text-white rounded">Remover</button>
-                </form>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 text-sm text-gray-700">{{ $id }}</td>
+              <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ $name }}</td>
+              <td class="px-4 py-3 text-sm">
+                <div class="flex gap-2">
+                  @if($id)
+                    <a href="{{ route('admin.categories.edit', ['category' => $id]) }}"
+                       class="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700">
+                      Editar
+                    </a>
+                    <form action="{{ route('admin.categories.destroy', ['category' => $id]) }}"
+                          method="POST"
+                          onsubmit="return confirm('Excluir esta categoria?')">
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit"
+                              class="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700">
+                        Excluir
+                      </button>
+                    </form>
+                  @else
+                    <span class="text-gray-400">Sem ID</span>
+                  @endif
+                </div>
               </td>
             </tr>
-          @empty
-            <tr><td class="p-3" colspan="4">Nenhuma categoria encontrada.</td></tr>
-          @endforelse
+          @endforeach
         </tbody>
       </table>
     </div>
 
-    @if($items instanceof \Illuminate\Contracts\Pagination\Paginator || $items instanceof \Illuminate\Pagination\LengthAwarePaginator)
-      <div class="mt-4">{{ $items->links() }}</div>
+    @if($isPager)
+      <div class="mt-4">
+        {{ $items->withQueryString()->links() }}
+      </div>
     @endif
-  </div>
-</x-app-layout>
+  @else
+    <div class="p-6 rounded bg-yellow-50 text-yellow-800">Nenhuma categoria encontrada.</div>
+  @endif
+</div>
+@endsection
