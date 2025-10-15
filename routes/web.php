@@ -119,3 +119,6 @@ if (app()->environment('local')) {
     });
 }
 /* =========== END TEMP_ME_DEBUG (local only) =========== */
+
+use App\Http\Controllers\SitemapController;
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
