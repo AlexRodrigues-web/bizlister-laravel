@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
   <head>
     <meta charset="utf-8">
@@ -20,14 +20,17 @@
       <link rel="stylesheet" href="{{ asset('css/app.css') }}">
       <script src="{{ asset('js/app.js') }}" defer></script>
     @endif
+
+    <!-- TW_CDN (dev only) -->
+    <script src="https://cdn.tailwindcss.com"></script><!--TW_CDN_MARK=v1-->
   </head>
 
-  <body class="font-sans antialiased">
+  <body class="font-sans antialiased"> <!--LAYOUT_APP_MARK=v1-->
     <div class="min-h-screen bg-gray-100">
 
       @include('layouts.navigation')
 
-      {{-- Header opcional: sÃ³ renderiza se a view definir section("header") --}}
+      {{-- Header opcional: só renderiza se a view definir section("header") --}}
       @hasSection('header')
         <header class="bg-white shadow">
           <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -38,24 +41,25 @@
 
       <!-- Page Content -->
       <main>
-        {{-- Views clÃ¡ssicas --}}
+        {{-- Views clássicas --}}
         @auth
-  <div class="max-w-6xl mx-auto px-4 mt-3 mb-4">
-    <div class="flex items-center justify-end gap-3">
-      <span class="text-sm text-slate-600">
-        {{ auth()->user()->username ?? auth()->user()->name ?? auth()->user()->email }}
-      </span>
-      <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <button type="submit"
-                class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200">
-          Sair
-        </button>
-      </form>
-    </div>
-  </div>
-@endauth
-@yield('content')
+          <div class="max-w-6xl mx-auto px-4 mt-3 mb-4">
+            <div class="flex items-center justify-end gap-3">
+              <span class="text-sm text-slate-600">
+                {{ auth()->user()->username ?? auth()->user()->name ?? auth()->user()->email }}
+              </span>
+              <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit"
+                        class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200">
+                  Sair
+                </button>
+              </form>
+            </div>
+          </div>
+        @endauth
+
+        @yield('content')
 
         {{-- Componentes tipo <x-app-layout> --}}
         {{ $slot ?? '' }}
@@ -63,4 +67,3 @@
     </div>
   </body>
 </html>
-

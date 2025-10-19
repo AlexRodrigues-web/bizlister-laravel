@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Models\Models;
+namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Page extends Model
 {
-    use HasFactory;
+    protected $fillable = ['title','slug','content','is_active'];
+    // Se o nome da tabela for diferente, especifique:
+    // protected $table = 'pages';
 }

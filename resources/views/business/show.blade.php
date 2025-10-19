@@ -58,9 +58,68 @@
     </div>
     <div>
       <dt class="font-semibold">Descrição:</dt>
-      <dd>{!! nl2br(e($biz->description)) !!}</dd>
+      <dd>@php echo nl2br(e($biz->description)); @endphp</dd>
     </div>
   </dl>
+
+  {{-- ===================== Contatos do Negócio ===================== --}}
+  @php
+      $addr1   = trim((string)($biz->address_1 ?? ''));
+      $addr2   = trim((string)($biz->address_2 ?? ''));
+      $phone   = trim((string)($biz->phone ?? ''));
+      $website = trim((string)($biz->website ?? ''));
+      $email   = trim((string)($biz->email ?? ''));
+
+      $hasContacts = $addr1 || $addr2 || $phone || $website || $email;
+
+      // tel: apenas dígitos
+      $telHref = preg_replace('/\D+/', '', $phone);
+
+      // website: garante protocolo p/ link externo
+      $websiteHref = $website;
+      if ($website && !preg_match('/^https?:\/\//i', $websiteHref)) {
+          $websiteHref = 'http://' . $websiteHref;
+      }
+  @endphp
+
+  @if ($hasContacts)
+    <div class="mt-6 space-y-4 text-sm leading-6">
+      <h2 class="text-lg font-semibold text-slate-800">Contatos</h2>
+
+      @if ($addr1 || $addr2)
+        <div>
+          <div class="font-semibold">Endereço</div>
+          <div>
+            {{ $addr1 }}@if($addr1 && $addr2), @endif{{ $addr2 }}
+          </div>
+        </div>
+      @endif
+
+      @if ($phone)
+        <div>
+          <div class="font-semibold">Telefone</div>
+          <a href="tel:{{ $telHref }}" class="underline">{{ $phone }}</a>
+        </div>
+      @endif
+
+      @if ($website)
+        <div>
+          <div class="font-semibold">Website</div>
+          <a href="{{ $websiteHref }}" target="_blank" rel="nofollow noopener" class="underline break-all">
+            {{ $website }}
+          </a>
+        </div>
+      @endif
+
+      @if ($email)
+        <div>
+          <div class="font-semibold">Email</div>
+          <a href="mailto:{{ e($email) }}" class="underline break-all">{{ $email }}</a>
+        </div>
+      @endif
+    </div>
+  @endif
+  {{-- =================== /Contatos do Negócio ====================== --}}
 
   <div class="mt-6">
     <a href="{{ url()->previous() }}"

@@ -1,6 +1,8 @@
-﻿@extends("layouts.app")
+@extends("layouts.app")
 
 @section("content")
+{{-- BLOCO_MODERN_* DESABILITADO TEMPORARIAMENTE (mantendo legado ativo) --}}
+
 <div class="max-w-4xl mx-auto px-4 py-8">
   <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800 mb-6">Categorias</h1>
 
@@ -9,13 +11,16 @@
                 || ($categories ?? null) instanceof \Illuminate\Pagination\LengthAwarePaginator;
   @endphp
 
-  @if(($isPaginator && $categories->count()) || (!$isPaginator && is_countable($categories ?? []) && count($categories ?? [])>0))
+  @if(($isPaginator && $categories->count()) || (!$isPaginator && is_countable($categories ?? []) && count($categories ?? []) > 0))
     <ul class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
       @foreach($categories as $c)
-        @php($name = $c->category ?? $c->cat_name ?? '')
-        @php($slug = \Illuminate\Support\Str::slug($name))
+        @php
+          $name = $c->category ?? $c->cat_name ?? $c->label ?? '';
+          $slug = \Illuminate\Support\Str::slug($name);
+          $cid  = $c->cat_id ?? $c->id ?? 0;
+        @endphp
         <li>
-          <a href="{{ route('categories.show', [$c->cat_id ?? $c->id ?? 0, $slug]) }}"
+          <a href="{{ route('categories.show', [$cid, $slug]) }}"
              class="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition">
             <span class="text-slate-800">{{ $name }}</span>
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

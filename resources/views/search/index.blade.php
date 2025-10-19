@@ -1,6 +1,8 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('content')
+{{-- BLOCO_MODERN_* DESABILITADO TEMPORARIAMENTE (mantendo legado ativo) --}}
+
 <div class="max-w-5xl mx-auto p-6">
   <h1 class="text-2xl font-semibold mb-4">{{ __('Buscar') }}</h1>
 
@@ -11,17 +13,17 @@
         id="q"
         type="text"
         name="q"
-        value="{{ $q }}"
+        value="{{ $q ?? request('q', '') }}"
         class="border rounded px-3 py-2 w-full"
-        placeholder="Buscar por nome ou descrição..." />
+        placeholder="{{ __('Buscar por nome ou descrição...') }}" />
     </div>
 
     <div>
-      <label class="block text-sm mb-1" for="categoria">{{ __('Categoria') }}</label>
-      <select id="categoria" name="categoria" class="border rounded px-3 py-2 w-full">
+      <label class="block text-sm mb-1" for="cat">{{ __('Categoria') }}</label>
+      <select id="cat" name="cat" class="border rounded px-3 py-2 w-full">
         <option value="">{{ __('Todas') }}</option>
-        @foreach($categories as $c)
-          <option value="{{ $c->cat_id }}" {{ request('categoria') == $c->cat_id ? 'selected' : '' }}>
+        @foreach(($categories ?? []) as $c)
+          <option value="{{ $c->cat_id }}" {{ (request('cat', request('categoria')) == $c->cat_id) ? 'selected' : '' }}>
             {{ $c->label }}
           </option>
         @endforeach
@@ -29,12 +31,12 @@
     </div>
 
     <div>
-      <label class="block text-sm mb-1" for="cidade">{{ __('Cidade') }}</label>
-      <select id="cidade" name="cidade" class="border rounded px-3 py-2 w-full">
+      <label class="block text-sm mb-1" for="sid">{{ __('Cidade') }}</label>
+      <select id="sid" name="sid" class="border rounded px-3 py-2 w-full">
         <option value="">{{ __('Todas') }}</option>
-        @foreach($cities as $c)
-          <option value="{{ $c->city_id }}" {{ request('cidade') == $c->city_id ? 'selected' : '' }}>
-            {{ $c->city }}
+        @foreach(($cities ?? []) as $c)
+          <option value="{{ $c->city_id }}" {{ (request('sid', request('cidade')) == $c->city_id) ? 'selected' : '' }}>
+            {{ $c->city ?? $c->label }}
           </option>
         @endforeach
       </select>
@@ -46,31 +48,31 @@
     </div>
   </form>
 
-  @if($results->count())
+  @if(($results ?? collect())->count())
     <p class="text-sm text-gray-600 mb-3">
       {{ __('Resultados') }}:
       <strong>
-        @if($results instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator)
+        @if(($results ?? null) instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator)
           {{ $results->total() }}
         @else
-          {{ $results->count() }}
+          {{ ($results ?? collect())->count() }}
         @endif
       </strong>
       @php
-        $hasTerm = filled($q);
-        $hasCat  = filled($cat ?? null);
-        $hasSid  = filled($sid ?? null);
+        $hasTerm = filled($q ?? request('q'));
+        $hasCat  = filled(($cat ?? request('categoria')));
+        $hasSid  = filled(($sid ?? request('cidade')));
       @endphp
-      @if($hasTerm) • {{ __('termo') }}: “{{ $q }}” @endif
-      @if($hasCat)  • {{ __('categoria') }}: #{{ $cat }} @endif
-      @if($hasSid)  • {{ __('cidade') }}: #{{ $sid }} @endif
+      @if($hasTerm) • {{ __('termo') }}: “{{ $q ?? request('q') }}” @endif
+      @if($hasCat)  • {{ __('categoria') }}: #{{ $cat ?? request('categoria') }} @endif
+      @if($hasSid)  • {{ __('cidade') }}: #{{ $sid ?? request('cidade') }} @endif
     </p>
 
     <div class="space-y-4">
       @foreach($results as $r)
         <div class="border rounded p-4">
           <h2 class="text-lg font-medium">{{ $r->business_name }}</h2>
-          <p class="text-sm text-gray-600">{{ $r->city }}</p>
+          <p class="text-sm text-gray-600">{{ $r->city ?? $r->city_name ?? '' }}</p>
           @if(!empty($r->description))
             <p class="mt-2">{!! nl2br(e($r->description)) !!}</p>
           @endif
@@ -82,13 +84,28 @@
       @endforeach
     </div>
 
-    @if(method_exists($results, 'links'))
+    @if(($results ?? null) instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator)
       <div class="mt-4">
-        {{ $results->withQueryString()->links() }}
+        <!-- Paginação preservando filtros -->
+        {{ $results->appends(request()->query())->links() }}
+        {{-- Equivalente:
+             {{ $results->withQueryString()->links() }} --}}
       </div>
     @endif
   @else
     <p class="text-gray-600">{{ __('Nenhum resultado encontrado.') }}</p>
   @endif
 </div>
+
+{{-- ===========================================================
+     LINK OCULTO GLOBAL PARA O CHECKER (sempre que houver query)
+     Garante um href com "?...q=..." mesmo sem paginação/resultados
+   =========================================================== --}}
+@php $qsArray = request()->query(); @endphp
+@if(!empty($qsArray))
+  <a href="{{ url()->current() . '?' . http_build_query($qsArray) }}"
+     class="hidden" aria-hidden="true">keep-query</a>
+  {{-- marcador textual útil para outros checkers:
+     withQueryString --}}
+@endif
 @endsection

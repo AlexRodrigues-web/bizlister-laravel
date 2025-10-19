@@ -78,7 +78,7 @@ class BusinessManageController extends Controller
         $item->save();
 
         return redirect()
-            ->route('admin.business.index')
+            ->route('admin.businesses.index'))
             ->with('success', 'Negócio atualizado.');
     }
 

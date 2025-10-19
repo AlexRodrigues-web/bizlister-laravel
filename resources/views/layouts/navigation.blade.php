@@ -1,4 +1,4 @@
-﻿<div class="bg-white border-b border-gray-100">
+<div class="bg-white border-b border-gray-100">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between h-16">
 
@@ -85,13 +85,3 @@
     </div>
   </div>
 </div>
-{{-- ADMIN LINKS (auto) --}}
-@auth
-    @can('admin')
-        <a href="{{ route('admin.dashboard') }}" class="px-3 py-2">Admin</a>
-        <a href="{{ route('admin.categories.index') }}" class="px-3 py-2">Categorias (Admin)</a>
-        <a href="{{ route('admin.cities.index') }}" class="px-3 py-2">Cidades (Admin)</a>
-        <a href="{{ route('admin.businesses.index') }}" class="px-3 py-2">Negócios (Admin)</a>
-    @endcan
-@endauth
-{{-- /ADMIN LINKS --}}

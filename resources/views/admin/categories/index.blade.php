@@ -10,8 +10,17 @@
     </a>
   </div>
 
-  @if (session('status'))
-    <div class="mb-4 p-3 rounded bg-green-100 text-green-800">{{ session('status') }}</div>
+  {{-- Flash messages: success/status e error --}}
+  @if (session('success') || session('status'))
+    <div class="mb-4 p-3 rounded border border-green-200 bg-green-50 text-green-800">
+      {{ session('success') ?? session('status') }}
+    </div>
+  @endif
+
+  @if (session('error'))
+    <div class="mb-4 p-3 rounded border border-red-200 bg-red-50 text-red-800">
+      {{ session('error') }}
+    </div>
   @endif
 
   @php

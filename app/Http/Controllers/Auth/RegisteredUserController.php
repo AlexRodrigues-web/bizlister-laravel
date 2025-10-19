@@ -9,61 +9,51 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
+use Illuminate\Validation\Rules\Password;
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Display the registration view.
-     *
-     * @return \Illuminate\View\View
-     */
     public function create()
     {
         return view('auth.register');
     }
 
-    /**
-     * Handle an incoming registration request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function store(Request $request)
     {
         $request->validate([
-    'name' => ['required','string','max:255'],
-    'email' => ['required','string','email','max:255','unique:users'],
-    'password' => [
-        'required',
-        'string',
-        'confirmed',
-        'min:8',
-        function($attr,$value,$fail){
-            if(!preg_match('/[A-Z]/u', $value)){ $fail(__('validation.password_strength')); }
-        },
-        function($attr,$value,$fail){
-            if(!preg_match('/[a-z]/u', $value)){ $fail(__('validation.password_strength')); }
-        },
-        function($attr,$value,$fail){
-            if(!preg_match('/[0-9]/', $value)){ $fail(__('validation.password_strength')); }
-        },
-        function($attr,$value,$fail){
-            if(!preg_match('/[^A-Za-z0-9]/u', $value)){ $fail(__('validation.password_strength')); }
-        },
-    ],
-]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            // o form do Breeze usa "name"; mapeamos para a coluna legada "username"
+            'name'     => ['required','string','max:255'],
+            'email'    => ['required','string','email','max:255','unique:users,email'],
+            'password' => [
+                'required',
+                'confirmed',
+                Password::min(8)
+                    ->letters()
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols()
+                    ->uncompromised(),
+            ],
         ]);
 
-        event(new Registered($user));
+        // valores padrão para colunas legadas NOT NULL
+        $legacyDefaults = [
+            'country'  => '',
+            'gender'   => '',
+            'birthday' => '',
+            'about'    => '',
+            'avatar'   => '',
+        ];
 
+        $user = User::create(array_merge($legacyDefaults, [
+            'username'        => $request->input('name'),
+            'email'           => $request->email,
+            'password'        => Hash::make($request->password),
+            // varchar no legado — mantenha um formato consistente
+            'registered_date' => now()->format('Y-m-d H:i:s'),
+        ]));
+
+        event(new Registered($user));
         Auth::login($user);
 
         return redirect(RouteServiceProvider::HOME);

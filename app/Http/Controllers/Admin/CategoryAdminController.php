@@ -1,8 +1,10 @@
 <?php
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 
 class CategoryAdminController extends Controller
@@ -26,7 +28,7 @@ class CategoryAdminController extends Controller
     }
 
     // POST /admin/categories
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'category' => ['required', 'string', 'max:190'],
@@ -36,8 +38,9 @@ class CategoryAdminController extends Controller
             'category' => $data['category'],
         ]);
 
-        return redirect()->route('admin.categories.index')
-            ->with('status', 'Categoria criada com sucesso.');
+        return redirect()
+            ->route('admin.categories.index')
+            ->with('success', 'Categoria criada com sucesso.');
     }
 
     // GET /admin/categories/{id}/edit
@@ -52,7 +55,7 @@ class CategoryAdminController extends Controller
     }
 
     // PUT/PATCH /admin/categories/{id}
-    public function update(Request $request, $id)
+    public function update(Request $request, $id): RedirectResponse
     {
         $data = $request->validate([
             'category' => ['required', 'string', 'max:190'],
@@ -67,19 +70,32 @@ class CategoryAdminController extends Controller
             'category' => $data['category'],
         ]);
 
-        return redirect()->route('admin.categories.index')
-            ->with('status', 'Categoria atualizada com sucesso.');
+        return redirect()
+            ->route('admin.categories.index')
+            ->with('success', 'Categoria atualizada com sucesso.');
     }
 
     // DELETE /admin/categories/{id}
-    public function destroy($id)
+    public function destroy($id): RedirectResponse
     {
-        $deleted = DB::table('category')->where('cat_id', $id)->delete();
-        if (!$deleted) {
-            abort(404, 'Categoria não encontrada');
+        // BLOQUEIO: não permitir excluir se houver negócios vinculados
+        $hasDeps = DB::table('business')->where('cid', $id)->exists();
+        if ($hasDeps) {
+            return back()->with('error', 'Não é possível excluir: há negócios vinculados a esta categoria.');
         }
 
-        return redirect()->route('admin.categories.index')
-            ->with('status', 'Categoria excluída com sucesso.');
+        try {
+            $deleted = DB::table('category')->where('cat_id', $id)->delete();
+            if (!$deleted) {
+                abort(404, 'Categoria não encontrada');
+            }
+
+            return redirect()
+                ->route('admin.categories.index')
+                ->with('success', 'Categoria excluída com sucesso.');
+        } catch (\Throwable $e) {
+            // Caso exista FK no banco (ON DELETE RESTRICT) ou outro erro
+            return back()->with('error', 'Não foi possível excluir a categoria. Verifique vínculos e tente novamente.');
+        }
     }
 }

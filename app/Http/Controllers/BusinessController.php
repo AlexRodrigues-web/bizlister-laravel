@@ -6,7 +6,9 @@ use App\Models\Business;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;              // upload
 use Illuminate\Support\Str;
+use Intervention\Image\ImageManagerStatic as Image; // thumbs
 
 class BusinessController extends Controller
 {
@@ -69,12 +71,11 @@ class BusinessController extends Controller
             $categories = collect();
         }
 
-        // ==== Cidades (dinâmico de verdade) ====
+        // ==== Cidades (dinâmico) ====
         $cities = collect();
         try {
             $meta = $this->detectSimpleTable('city','cities');
             if ($meta['table'] && $meta['idCol']) {
-                // Monta SELECT seguro com alias padronizado
                 $id   = $meta['idCol'];
                 $name = $meta['labelCol']; // pode ser null
 
@@ -84,7 +85,6 @@ class BusinessController extends Controller
                         ->orderBy('label')
                         ->get();
                 } else {
-                    // Sem coluna de nome, cai no fallback
                     $cities = DB::table($meta['table'])
                         ->selectRaw("$id AS city_id, CONCAT('Cidade #', $id) AS label")
                         ->orderBy('label')
@@ -144,11 +144,50 @@ class BusinessController extends Controller
             }
         }
 
-        // Upload
-        if ($request->hasFile('image') && Schema::hasColumn('business','image')) {
-            $path = $request->file('image')->store('business', 'public');
-            $data['image'] = $path;
+        // ============ Upload + Thumbs (1200x800 e 360x240, WEBP) ============
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+            $baseDir  = 'businesses';
+            $basename = Str::random(40);
+
+            // extensão do original
+            $ext = strtolower($request->file('image')->getClientOriginalExtension() ?: 'jpg');
+
+            // 1) Original (mantém compat com colunas 'image' quando existem)
+            $origRel = $baseDir.'/'.$basename.'.'.$ext;
+            $request->file('image')->storeAs($baseDir, $basename.'.'.$ext, 'public');
+            if (Schema::hasColumn('business', 'image')) {
+                $data['image'] = $origRel;
+            }
+
+            try {
+                $srcPath = $request->file('image')->getRealPath();
+
+                // 2) LG 1200x800 (webp)
+                $imgLg = Image::make($srcPath)
+                    ->orientate()
+                    ->fit(1200, 800, function($c){ $c->upsize(); });
+                $lgRel = $baseDir.'/'.$basename.'_lg.webp';
+                Storage::disk('public')->put($lgRel, (string) $imgLg->encode('webp', 85));
+
+                // 3) SM 360x240 (webp)
+                $imgSm = Image::make($srcPath)
+                    ->orientate()
+                    ->fit(360, 240, function($c){ $c->upsize(); });
+                $smRel = $baseDir.'/'.$basename.'_sm.webp';
+                Storage::disk('public')->put($smRel, (string) $imgSm->encode('webp', 85));
+
+                // Persistência — usa novas colunas se existirem, senão mantém legado
+                if (Schema::hasColumn('business', 'image_path_lg')) { $data['image_path_lg'] = $lgRel; }
+                if (Schema::hasColumn('business', 'image_path_sm')) { $data['image_path_sm'] = $smRel; }
+                if (Schema::hasColumn('business', 'image_lg'))      { $data['image_lg']      = $lgRel; }
+                if (Schema::hasColumn('business', 'image_sm'))      { $data['image_sm']      = $smRel; }
+
+            } catch (\Throwable $e) {
+                // Se der erro na geração de thumbs, seguimos apenas com o original
+                // (opcional: logar o erro)
+            }
         }
+        // ====================================================================
 
         $biz = Business::create($data);
 
@@ -183,12 +222,12 @@ class BusinessController extends Controller
         try {
             $meta = $this->detectSimpleTable('city','cities');
             if ($meta['table'] && $meta['idCol']) {
-                $id   = $meta['idCol'];
-                $name = $meta['labelCol'];
+                $idCol   = $meta['idCol'];
+                $nameCol = $meta['labelCol'];
                 $city = DB::table($meta['table'])
-                    ->where($id, $biz->sid)
-                    ->selectRaw($id." AS city_id, ".
-                        ($name ? "COALESCE($name, CONCAT('Cidade #', $id))" : "CONCAT('Cidade #', $id)")
+                    ->where($idCol, $biz->sid)
+                    ->selectRaw($idCol." AS city_id, ".
+                        ($nameCol ? "COALESCE($nameCol, CONCAT('Cidade #', $idCol))" : "CONCAT('Cidade #', $idCol)")
                         ." AS city")
                     ->first();
             }

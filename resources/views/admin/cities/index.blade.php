@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('content')
 <div class="max-w-6xl mx-auto p-6">
@@ -10,8 +10,17 @@
     </a>
   </div>
 
-  @if (session('status'))
-    <div class="mb-4 p-3 rounded bg-green-100 text-green-800">{{ session('status') }}</div>
+  {{-- Flash messages --}}
+  @if (session('success') || session('status'))
+    <div class="mb-4 p-3 rounded border border-green-200 bg-green-50 text-green-800" role="alert">
+      {{ session('success') ?? session('status') }}
+    </div>
+  @endif
+
+  @if (session('error'))
+    <div class="mb-4 p-3 rounded border border-red-200 bg-red-50 text-red-800" role="alert">
+      {{ session('error') }}
+    </div>
   @endif
 
   @php
@@ -20,6 +29,7 @@
     $pk       = $pk ?? 'city_id';
     $isPager  = ($items instanceof \Illuminate\Contracts\Pagination\Paginator)
              || ($items instanceof \Illuminate\Pagination\LengthAwarePaginator);
+    $hasUf    = $hasUf ?? false; // vem do controller
   @endphp
 
   @if (($isPager && $items->count()) || (!$isPager && count($items)))
@@ -29,7 +39,9 @@
         <tr>
           <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
           <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cidade</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">UF</th>
+          @if($hasUf)
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">UF</th>
+          @endif
           <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
         </tr>
       </thead>
@@ -39,21 +51,23 @@
             $id   = $row->{$pk} ?? $row->id ?? null;
             $name = $row->city ?? $row->name ?? ('#'.$id);
             $uf   = $row->uf ?? '';
+            $rid  = $row->{$pk} ?? $row->city_id ?? $row->id;
           @endphp
           <tr class="hover:bg-gray-50">
             <td class="px-4 py-3 text-sm text-gray-700">{{ $id }}</td>
             <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ $name }}</td>
-            <td class="px-4 py-3 text-sm text-gray-700">{{ $uf }}</td>
+            @if($hasUf)
+              <td class="px-4 py-3 text-sm text-gray-700">{{ $uf }}</td>
+            @endif
             <td class="px-4 py-3 text-sm">
               <div class="flex gap-2">
-                @if($id)
-                  {{-- Passa ambos os parÃ¢metros para cobrir rotas com {id} e {city} --}}
-                  <a href="{{ route('admin.cities.edit', ['city' => $row->{$pk} ?? $row->city_id ?? $row->id]) }}"
-                     class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-100">
+                @if($rid)
+                  <a href="{{ route('admin.cities.edit', ['city' => $rid]) }}"
+                     class="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700">
                     Editar
                   </a>
 
-                  <form action="{{ route('admin.cities.destroy', ['city' => $row->{$pk} ?? $row->city_id ?? $row->id]) }}"
+                  <form action="{{ route('admin.cities.destroy', ['city' => $rid]) }}"
                         method="POST"
                         onsubmit="return confirm('Remover esta cidade?');">
                     @csrf
@@ -84,8 +98,3 @@
   @endif
 </div>
 @endsection
-
-
-
-
-
