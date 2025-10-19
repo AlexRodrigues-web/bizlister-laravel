@@ -116,7 +116,17 @@ class BusinessController extends Controller
             'description'   => $validated['description'] ?? null,
         ];
 
-        // Preenche 'city' textual se existir essa coluna no legacy
+        // ===== Normalização: evita NULL em colunas NOT NULL quando o middleware zera "" => NULL =====
+        foreach (["menu","phone","status","address"] as $f) {
+            if (\Illuminate\Support\Facades\Schema::hasColumn("business", $f) && !array_key_exists($f, $data)) {
+                $val = $request->input($f);
+                if (is_null($val)) { $val = ""; } // força string vazia em vez de NULL
+                $data[$f] = $val;
+            }
+        }
+        // ==============================================================================================
+
+        // Preenche 'city' textual se existir essa coluna no legado
         if (Schema::hasColumn('business', 'city')) {
             try {
                 $meta = $this->detectSimpleTable('city','cities');

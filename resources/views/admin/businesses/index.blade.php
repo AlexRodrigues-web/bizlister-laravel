@@ -1,7 +1,9 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 @section('content')
+@include('admin._back_public')
+
 <div class="p-6 max-w-6xl mx-auto">
-  <h1 class="text-2xl font-bold mb-4">Negócios</h1>
+  <h1 class="text-2xl font-bold mb-4">NegÃ³cios</h1>
 
   @if(session('success'))
     <div class="p-3 bg-green-100 text-green-800 mb-3">{{ session('success') }}</div>
@@ -38,7 +40,7 @@
         <th class="p-2 text-left">Nome</th>
         <th class="p-2 text-left">Categoria</th>
         <th class="p-2 text-left">Cidade</th>
-        <th class="p-2 text-right">Ações</th>
+        <th class="p-2 text-right">AÃ§Ãµes</th>
       </tr>
       @forelse($rows as $r)
         <tr class="border-b">

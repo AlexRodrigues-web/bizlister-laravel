@@ -1,5 +1,7 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 @section('content')
+@include('admin._back_public')
+
 <div class="max-w-lg mx-auto p-6">
   <h1 class="text-2xl font-bold mb-4">Nova Categoria</h1>
   <form method="post" action="{{ route('admin.categories.store') }}" class="space-y-4">

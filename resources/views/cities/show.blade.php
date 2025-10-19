@@ -1,10 +1,23 @@
 @extends('layouts.app')
 
 @section('content')
-{{-- BLOCO_MODERN_* DESABILITADO TEMPORARIAMENTE (mantendo legado ativo) --}}
+{{-- PUBLIC_SKIN_TOP --}}
+<div class="mx-auto max-w-6xl px-4 py-8">
+  <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800">
+      {{ $pageTitle ?? ($title ?? (View::shared('title') ?? 'Cidades')) }}
+    </h1>
+    <form method="get" action="" class="flex items-stretch gap-2">
+      <input name="q" value="{{ request('q') }}" placeholder="Pesquisar..."
+             class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+      <button class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+        Pesquisar
+      </button>
+    </form>
+  </div>{{-- BLOCO_MODERN_* DESABILITADO TEMPORARIAMENTE (mantendo legado ativo) --}}
 <div class="max-w-6xl mx-auto px-4 py-8">
   <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800 mb-6">
-    {{ 'Negócios em ' . ($city->city ?? '') }}
+    {{ 'NegÃ³cios em ' . ($city->city ?? '') }}
   </h1>
 
   @php
@@ -24,7 +37,7 @@
         name="q"
         value="{{ $qValue }}"
         class="w-full rounded-lg border-slate-300 focus:ring-indigo-500 focus:border-indigo-500"
-        placeholder="Buscar por nome ou descrição...">
+        placeholder="Buscar por nome ou descriÃ§Ã£o...">
     </div>
 
     <div class="md:col-span-4">
@@ -54,8 +67,8 @@
       {{ method_exists($businesses ?? null, 'total') ? $businesses->total() : (($businesses ?? collect())->count()) }}
     </span>
     em <span class="font-semibold">{{ $city->city ?? '' }}</span>
-    @if(filled($qValue)) • termo: “{{ $qValue }}” @endif
-    @if(filled($catId))  • categoria: #{{ $catId }} @endif
+    @if(filled($qValue)) â€¢ termo: â€œ{{ $qValue }}â€ @endif
+    @if(filled($catId))  â€¢ categoria: #{{ $catId }} @endif
   </p>
 
   {{-- Lista --}}
@@ -73,7 +86,7 @@
     @endif
   @else
     <div class="rounded-xl border border-slate-200 bg-white p-6 text-slate-600">
-      Nenhum negócio encontrado com os filtros aplicados.
+      Nenhum negÃ³cio encontrado com os filtros aplicados.
     </div>
   @endif
 
@@ -81,4 +94,7 @@
     <a href="{{ route('cities.index') }}" class="text-indigo-600 hover:text-indigo-700">&larr; Voltar para cidades</a>
   </div>
 </div>
+
+</div>
+{{-- /PUBLIC_SKIN_TOP --}}
 @endsection

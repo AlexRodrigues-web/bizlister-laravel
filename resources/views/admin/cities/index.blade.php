@@ -1,6 +1,8 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('content')
+@include('admin._back_public')
+
 <div class="max-w-6xl mx-auto p-6">
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-bold">Cidades</h1>
@@ -42,7 +44,7 @@
           @if($hasUf)
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">UF</th>
           @endif
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">AÃ§Ãµes</th>
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-100">

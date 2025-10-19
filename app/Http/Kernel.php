@@ -3,6 +3,7 @@
 namespace App\Http;
 
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use App\Http\Middleware\TapProbeMiddleware;
 
 class Kernel extends HttpKernel
 {
@@ -67,3 +68,4 @@ class Kernel extends HttpKernel
         'is_admin' => \App\Http\Middleware\IsAdmin::class,
     ];
 }
+

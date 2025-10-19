@@ -1,4 +1,4 @@
-﻿## Requisitos
+## Requisitos
 
 - PHP 8.2+ com extensões: `pdo_mysql`, `fileinfo`, `mbstring`, `openssl`.
 

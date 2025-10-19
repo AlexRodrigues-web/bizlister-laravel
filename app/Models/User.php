@@ -8,13 +8,18 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
+    public function reviews()
+    {
+        return $this->hasMany(\App\Models\Review::class, 'user_id', 'user_id');
+    }
+
     use Notifiable;
 
     protected $table = 'users';
     protected $primaryKey = 'user_id';
     public $timestamps = false;
 
-    // mantém os fillables já definidos (legado)
+    // mantÃƒÂ©m os fillables jÃƒÂ¡ definidos (legado)
     protected $fillable = [
         'username',
         'email',

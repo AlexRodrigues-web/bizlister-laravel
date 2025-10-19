@@ -1,7 +1,9 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 @section('content')
+@include('admin._back_public')
+
 <div class="p-6 max-w-2xl mx-auto">
-  <h1 class="text-2xl font-bold mb-4">Editar Negócio #{{ $row->biz_id }}</h1>
+  <h1 class="text-2xl font-bold mb-4">Editar NegÃƒÂ³cio #{{ $row->biz_id }}</h1>
 
   @if ($errors->any())
     <div class="p-3 mb-4 rounded bg-red-100 text-red-800">
@@ -21,7 +23,7 @@
     </div>
 
     <div>
-      <label class="block text-sm font-medium">Descrição</label>
+      <label class="block text-sm font-medium">DescriÃƒÂ§ÃƒÂ£o</label>
       <textarea name="description" rows="5" class="border rounded px-3 py-2 w-full">{{ old('description',$row->description) }}</textarea>
       @error('description')<div class="text-red-600 text-sm">{{ $message }}</div>@enderror
     </div>

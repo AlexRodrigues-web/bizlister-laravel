@@ -1,8 +1,8 @@
-@extends("layouts.app")
+@extends('layouts.admin')
 
 @section("content")
 <div class="max-w-3xl mx-auto p-6">
-  <h1 class="text-2xl font-bold mb-4">Editar Negócio</h1>
+  <h1 class="text-2xl font-bold mb-4">Editar NegÃ³cio</h1>
 
   @if(session("success"))
     <p class="mb-3 text-green-700">{{ session("success") }}</p>
@@ -20,7 +20,7 @@
     </div>
 
     <div>
-      <label class="block text-sm mb-1">Descrição</label>
+      <label class="block text-sm mb-1">DescriÃ§Ã£o</label>
       <textarea name="description" class="border rounded px-3 py-2 w-full" rows="4">{{ old('description', $item->description) }}</textarea>
       @error('description') <p class="text-red-600 text-sm">{{ $message }}</p> @enderror
     </div>

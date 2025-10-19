@@ -28,7 +28,7 @@
 
             <div class="flex items-center justify-end mt-4">
                 <x-button>
-                    {{ __('Enviar link de redefiniÃƒÂ§ÃƒÂ£o') }}
+                    {{ __('Enviar link de redefinição') }}
                 </x-button>
             </div>
         </form>

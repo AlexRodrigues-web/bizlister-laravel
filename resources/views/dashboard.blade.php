@@ -1,3 +1,17 @@
+{{-- PUBLIC_SKIN_TOP --}}
+<div class="mx-auto max-w-6xl px-4 py-8">
+  <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800">
+      {{ $pageTitle ?? ($title ?? (View::shared('title') ?? 'Painel')) }}
+    </h1>
+    <form method="get" action="" class="flex items-stretch gap-2">
+      <input name="q" value="{{ request('q') }}" placeholder="Pesquisar..."
+             class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+      <button class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+        Pesquisar
+      </button>
+    </form>
+  </div>
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -23,9 +37,12 @@
                 @endphp
                 <ul class="list-disc ml-6">
                     <li>Total de cidades: <strong>{{ $totalCidades }}</strong></li>
-                    <li>Total de Negócios: <strong>{{ $totalNegocios }}</strong></li>
+                    <li>Total de NegÃ³cios: <strong>{{ $totalNegocios }}</strong></li>
                 </ul>
             </div>
         </div>
     </div>
 </x-app-layout>
+
+</div>
+{{-- /PUBLIC_SKIN_TOP --}}

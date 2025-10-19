@@ -1,44 +1,41 @@
-@extends("layouts.app")
+{{-- PUBLIC_UI_V2_MARK --}}
+@extends('layouts.app')
 
-@section("content")
-{{-- BLOCO_MODERN_* DESABILITADO TEMPORARIAMENTE (mantendo legado ativo) --}}
-
-<div class="max-w-4xl mx-auto px-4 py-8">
-  <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800 mb-6">Categorias</h1>
+@section('content')
+<div class="mx-auto max-w-6xl px-4 py-8">
+  <header class="mb-6 flex items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800">Categorias</h1>
+      <p class="text-slate-600 text-sm">Navegue por todas as categorias do BizLister.</p>
+    </div>
+    <form method="get" action="{{ route('categories.index') }}" class="hidden md:block">
+      <input name="q" value="{{ request('q') }}" placeholder="Buscar..."
+             class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none">
+    </form>
+  </header>
 
   @php
-    $isPaginator = ($categories ?? null) instanceof \Illuminate\Contracts\Pagination\Paginator
-                || ($categories ?? null) instanceof \Illuminate\Pagination\LengthAwarePaginator;
+    $items = $categories ?? $cats ?? collect();
   @endphp
 
-  @if(($isPaginator && $categories->count()) || (!$isPaginator && is_countable($categories ?? []) && count($categories ?? []) > 0))
-    <ul class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-      @foreach($categories as $c)
-        @php
-          $name = $c->category ?? $c->cat_name ?? $c->label ?? '';
-          $slug = \Illuminate\Support\Str::slug($name);
-          $cid  = $c->cat_id ?? $c->id ?? 0;
-        @endphp
-        <li>
-          <a href="{{ route('categories.show', [$cid, $slug]) }}"
-             class="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition">
-            <span class="text-slate-800">{{ $name }}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-          </a>
-        </li>
-      @endforeach
-    </ul>
-
-    @if($isPaginator)
-      <div class="mt-6">
-        {{ $categories->withQueryString()->links() }}
-      </div>
-    @endif
+  @if($items->count() === 0)
+    <div class="rounded-xl border border-slate-200 bg-white p-6 text-slate-600">Nenhuma categoria encontrada.</div>
   @else
-    <div class="rounded-xl border border-slate-200 bg-white p-6 text-slate-600">
-      Nenhuma categoria cadastrada.
+    <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+      @foreach($items as $c)
+        @php
+          $id   = $c->cat_id   ?? $c->id   ?? null;
+          $name = $c->category ?? $c->cat_name ?? $c->name ?? $c->label ?? ('Categoria #'.$id);
+          $slug = \Illuminate\Support\Str::slug($name ?? 'categoria');
+          $url  = $id ? route('categories.show', [$id, $slug]) : '#';
+        @endphp
+        <a href="{{ $url }}" class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <h2 class="font-semibold text-slate-800 group-hover:text-slate-900">{{ $name }}</h2>
+            <span class="text-xs text-slate-500">Ver</span>
+          </div>
+        </a>
+      @endforeach
     </div>
   @endif
 </div>

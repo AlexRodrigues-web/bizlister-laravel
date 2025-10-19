@@ -89,11 +89,8 @@ Route::middleware(['auth','is_admin'])
         // Cidades
         Route::resource('cities',     CityAdminController::class)->except(['show']);
 
-        // Negócios (admin)
-        Route::get('/businesses',           [BusinessAdminController::class,'index'])->name('businesses.index');
-        Route::get('/businesses/{id}/edit', [BusinessAdminController::class,'edit'])->name('businesses.edit');
-        Route::put('/businesses/{id}',      [BusinessAdminController::class,'update'])->name('businesses.update');
-        Route::delete('/businesses/{id}',   [BusinessAdminController::class,'destroy'])->name('businesses.destroy');
+        // Negócios (admin) — usar APENAS resource para evitar duplicações de names
+        Route::resource('businesses', BusinessAdminController::class)->except(['show']);
 
         // Alias compat
         Route::get('/business', fn () => redirect()->route('admin.businesses.index'))->name('business.index');
@@ -168,7 +165,26 @@ Route::get('/subcategory-{id}-{slug?}', function (int $id, ?string $slug = null)
 })->whereNumber('id');
 /* ===================== END LEGACY_301_REDIRECTS ===================== */
 
-/* ==================== BEGIN USEFUL_404_FALLBACK ==================== */
+/* ======== AUTH (Breeze) ======== */
+require __DIR__.'/auth.php';
+
+/* ======== PROBES DE TESTE (somente APP_ENV=testing) ======== */
+if (app()->environment('testing') && file_exists(base_path('routes/testing_probes.php'))) {
+    require base_path('routes/testing_probes.php');
+}
+
+/* ======== PÁGINAS ESTÁTICAS & CONTATO ======== */
+Route::get('/{slug}', [PageController::class, 'show'])
+    ->where('slug', 'sobre|termos')
+    ->name('pages.show');
+
+Route::get('/contato', [ContactController::class, 'show'])->name('contact.show');
+Route::post('/contato', [ContactController::class, 'submit'])->name('contact.send');
+
+// Sitemap
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+
+/* ==================== FALLBACK 404 (DEIXE POR ÚLTIMO) ==================== */
 Route::fallback(function () {
     $latest = DB::table('business')
         ->select('biz_id', 'business_name')
@@ -178,34 +194,28 @@ Route::fallback(function () {
 
     return response()->view('errors.404', ['latest' => $latest], 404);
 });
-/* ===================== END USEFUL_404_FALLBACK ===================== */
+/* ===================== END FALLBACK ===================== */
 
-// Sitemap
-Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+/* ======== REVIEWS ======== */
+// P�blico (enviar review)
+Route::middleware("auth")->group(function () {
+    Route::post("/negocio/{id}/reviews", [\App\Http\Controllers\ReviewController::class, "store"])
+        ->whereNumber("id")
+        ->name("reviews.store");
+});
 
-// Auth routes (Breeze)
-require __DIR__.'/auth.php';
-
-// Páginas estáticas & contato (mantendo teu modelo atual com controllers)
-Route::get('/{slug}', [PageController::class, 'show'])
-    ->where('slug', 'sobre|termos')
-    ->name('pages.show');
-
-Route::get('/contato', [ContactController::class, 'show'])->name('contact.show');
-Route::post('/contato', [ContactController::class, 'submit'])->name('contact.send');
-
-/* ==================== ADMIN COMPAT (só registra se não existir) ==================== */
-Route::middleware(['auth','is_admin'])
-    ->prefix('admin')->as('admin.')
+// Admin (modera��o)
+Route::middleware(["auth","is_admin"])
+    ->prefix("admin")->as("admin.")
     ->group(function () {
-        if (!Route::has('admin.categories.index')) {
-            Route::resource('categories', CategoryAdminController::class)->except(['show']);
-        }
-        if (!Route::has('admin.cities.index')) {
-            Route::resource('cities',     CityAdminController::class)->except(['show']);
-        }
-        if (!Route::has('admin.businesses.index')) {
-            Route::resource('businesses', BusinessAdminController::class)->except(['show']);
-        }
+        Route::get("/reviews", [\App\Http\Controllers\Admin\ReviewAdminController::class, "index"])->name("reviews.index");
+        Route::post("/reviews/{review}/approve", [\App\Http\Controllers\Admin\ReviewAdminController::class, "approve"])->name("reviews.approve");
+        Route::post("/reviews/{review}/hide",    [\App\Http\Controllers\Admin\ReviewAdminController::class, "hide"])->name("reviews.hide");
+        Route::delete("/reviews/{review}",       [\App\Http\Controllers\Admin\ReviewAdminController::class, "destroy"])->name("reviews.destroy");
     });
-/* ==================== FIM ADMIN COMPAT ==================== */
+
+// Legado: /write_a_review-{id} -> ancora #reviews na p�gina do neg�cio
+Route::get("/write_a_review-{id}", function (int $id) {
+    return redirect()->route("business.show", ["id"=>$id]) . "#reviews";
+})->whereNumber("id");
+

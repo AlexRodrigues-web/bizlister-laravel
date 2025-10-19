@@ -8,8 +8,8 @@ return new class extends Migration {
     public function up(): void
     {
         if (!Schema::hasColumn('business','image')) {
-            Schema::table('business', function (Blueprint \) {
-                \->string('image')->nullable()->after('description');
+            Schema::table('business', function (Blueprint $table) {
+$table->string('image')->nullable()->after('description');
             });
         }
     }
@@ -17,8 +17,8 @@ return new class extends Migration {
     public function down(): void
     {
         if (Schema::hasColumn('business','image')) {
-            Schema::table('business', function (Blueprint \) {
-                \->dropColumn('image');
+            Schema::table('business', function (Blueprint $table) {
+                $table->dropColumn('image');
             });
         }
     }

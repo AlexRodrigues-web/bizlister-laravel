@@ -1,7 +1,20 @@
 @extends('layouts.app')
 
 @section('content')
-{{-- BLOCO_MODERN_* DESABILITADO TEMPORARIAMENTE (mantendo legado ativo) --}}
+{{-- PUBLIC_SKIN_TOP --}}
+<div class="mx-auto max-w-6xl px-4 py-8">
+  <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800">
+      {{ $pageTitle ?? ($title ?? (View::shared('title') ?? 'Cidades')) }}
+    </h1>
+    <form method="get" action="" class="flex items-stretch gap-2">
+      <input name="q" value="{{ request('q') }}" placeholder="Pesquisar..."
+             class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+      <button class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+        Pesquisar
+      </button>
+    </form>
+  </div>{{-- BLOCO_MODERN_* DESABILITADO TEMPORARIAMENTE (mantendo legado ativo) --}}
 
 <div class="max-w-4xl mx-auto px-4 py-8">
   @php
@@ -42,4 +55,7 @@
     </div>
   @endif
 </div>
+
+</div>
+{{-- /PUBLIC_SKIN_TOP --}}
 @endsection

@@ -1,6 +1,8 @@
-﻿@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('content')
+@include('admin._back_public')
+
 <div class="max-w-lg mx-auto p-6">
   <h1 class="text-2xl font-bold mb-4">Editar Cidade #{{ $city->city_id ?? $city->id }}</h1>
 
