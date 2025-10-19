@@ -25,3 +25,10 @@ Homestead.yaml
 *.bak_*
 *backup*/
 routes/*.bak*
+# temp/dev
+*.html
+*.txt
+*.csv
+routes/*probes*.php
+routes/*backup*.php
+ck*.txt
