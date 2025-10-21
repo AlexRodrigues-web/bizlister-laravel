@@ -59,6 +59,37 @@
           Cadastrar um negócio
         </a>
       @endif
+
+      {{-- Páginas estáticas --}}
+      <a href="{{ url('/sobre-nos') }}"
+         class="inline-flex items-center rounded-lg bg-slate-100 px-4 py-2 text-slate-700 hover:bg-slate-200">
+        Sobre Nós
+      </a>
+      <a href="{{ url('/termos-de-uso') }}"
+         class="inline-flex items-center rounded-lg bg-slate-100 px-4 py-2 text-slate-700 hover:bg-slate-200">
+        Termos de Uso
+      </a>
+      <a href="{{ url('/politica-de-privacidade') }}"
+         class="inline-flex items-center rounded-lg bg-slate-100 px-4 py-2 text-slate-700 hover:bg-slate-200">
+        Política de Privacidade
+      </a>
+
+      {{-- Contato & Sitemap --}}
+      <a href="{{ url('/contato') }}"
+         class="inline-flex items-center rounded-lg bg-slate-100 px-4 py-2 text-slate-700 hover:bg-slate-200">
+        Contato
+      </a>
+      <a href="{{ url('/sitemap.xml') }}"
+         class="inline-flex items-center rounded-lg bg-slate-100 px-4 py-2 text-slate-700 hover:bg-slate-200" rel="nofollow">
+        Sitemap
+      </a>
+
+      {{-- Voltar --}}
+      <button type="button"
+              onclick="history.back()"
+              class="inline-flex items-center rounded-lg bg-white border border-slate-200 px-4 py-2 text-slate-700 hover:bg-slate-50">
+        Voltar
+      </button>
     </nav>
   </div>
 

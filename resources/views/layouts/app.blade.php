@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
   <head>
     <meta charset="utf-8">
@@ -26,20 +26,17 @@
   </head>
 
   <body class="font-sans antialiased">
-{{-- PUBLIC_NAV_MARK --}}
-@if (request()->is('admin*'))
-  @include('partials._public_nav')
-@endif
+@includeIf('partials._public_nav')
 {{-- ADMIN_RIBBON_MARK --}}
 @if (request()->is('admin*'))
   <div class="bg-amber-50 border-b border-amber-200">
     <div class="mx-auto max-w-6xl px-4 md:px-6 py-2 flex items-center justify-between">
       <div class="text-sm text-amber-900/80">
-        VocÃƒÆ’Ã‚Âª estÃƒÆ’Ã‚Â¡ no <strong>Admin</strong>.
+        VocÃƒÂª estÃƒÂ¡ no <strong>Admin</strong>.
       </div>
       <a href="{{ route('dashboard', [], false) ?? url('/') }}"
          class="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm hover:bg-amber-100">
-        ÃƒÂ¢Ã¢â‚¬Â Ã‚Â Dashboard
+        Ã¢â€ Â Dashboard
       </a>
     </div>
   </div>
@@ -49,7 +46,7 @@
 
       @include('layouts.navigation')
 
-      {{-- Header opcional: sÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ renderiza se a view definir section("header") --}}
+      {{-- Header opcional: sÃƒÆ’Ã‚Â³ renderiza se a view definir section("header") --}}
       @hasSection('header')
         <header class="bg-white shadow">
           <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -60,7 +57,7 @@
 
       <!-- Page Content -->
       <main>
-        {{-- Views clÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ssicas --}}
+        {{-- Views clÃƒÆ’Ã‚Â¡ssicas --}}
         @auth
           <div class="max-w-6xl mx-auto px-4 mt-3 mb-4">
             <div class="flex items-center justify-end gap-3">
@@ -84,5 +81,10 @@
         {{ $slot ?? '' }}
       </main>
     </div>
-  </body>
+  @stack('scripts')
+
+</body>
 </html>
+
+
+

@@ -10,30 +10,35 @@
 
         <!-- Links (lado esquerdo) -->
         <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-          <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+          <x-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
             {{ __('Dashboard') }}
           </x-nav-link>
 
-          <x-nav-link :href="route('categories.index')" :active="request()->routeIs('categories.*')">
+          <x-nav-link href="{{ route('categories.index') }}" :active="request()->routeIs('categories.*')">
             {{ __('Categorias') }}
           </x-nav-link>
 
-          <x-nav-link :href="route('cities.index')" :active="request()->routeIs('cities.*')">
+          <x-nav-link href="{{ route('cities.index') }}" :active="request()->routeIs('cities.*')">
             {{ __('Cidades') }}
           </x-nav-link>
 
-          <x-nav-link :href="route('search.index')" :active="request()->routeIs('search.*')">
+          <x-nav-link href="{{ route('search.index') }}" :active="request()->routeIs('search.*')">
             {{ __('Buscar') }}
           </x-nav-link>
 
+          <!-- NOVO: Contato -->
+          <x-nav-link href="{{ route('contact.show') }}" :active="request()->routeIs('contact.*')">
+            {{ __('Contato') }}
+          </x-nav-link>
+
           @can('admin')
-            <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
+            <x-nav-link href="{{ route('admin.dashboard') }}" :active="request()->routeIs('admin.*')">
               {{ __('Admin') }}
             </x-nav-link>
           @endcan
 
           @auth
-            <x-nav-link :href="route('business.create')" :active="request()->routeIs('business.create')">
+            <x-nav-link href="{{ route('business.create') }}" :active="request()->routeIs('business.create')">
               {{ __('Cadastrar Negócio') }}
             </x-nav-link>
           @endauth
@@ -58,7 +63,7 @@
             <x-slot name="content">
               <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <x-dropdown-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">
+                <x-dropdown-link href="{{ route('logout') }}" onclick="event.preventDefault(); this.closest('form').submit();">
                   {{ __('Sair') }}
                 </x-dropdown-link>
               </form>

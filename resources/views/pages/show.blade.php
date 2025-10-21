@@ -1,8 +1,12 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
+
+@section('title', $page->title)
 
 @section('content')
-  <div class="max-w-3xl mx-auto py-8">
-    <h1 class="text-2xl font-bold mb-4">{{ $page->title }}</h1>
-    <div class="prose">{!! $page->content !!}</div>
+  <div class="container mx-auto max-w-3xl p-6">
+    <h1 class="text-3xl font-bold mb-4">{{ $page->title }}</h1>
+    <article class="prose max-w-none">
+      {!! $page->content !!}
+    </article>
   </div>
 @endsection
