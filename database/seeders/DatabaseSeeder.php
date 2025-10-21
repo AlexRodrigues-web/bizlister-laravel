@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace Database\Seeders;
 
@@ -11,8 +11,7 @@ class DatabaseSeeder extends Seeder
      *
      * @return void
      */
-    public function run()
-    {
+    public function run()\n    {\n        \->call([\n            PagesSeeder::class,\n        ]);\n
         // \App\Models\User::factory(10)->create();
     }
 }
