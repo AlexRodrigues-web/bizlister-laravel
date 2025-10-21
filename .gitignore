@@ -32,3 +32,5 @@ routes/*.bak*
 routes/*probes*.php
 routes/*backup*.php
 ck*.txt
+
+*.bak
