@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Http\Controllers;
-use App\Models\City;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -10,31 +8,34 @@ class SearchController extends Controller
 {
     public function index(Request $request)
     {
-        $q      = trim((string)$request->input("q", ""));
-        $cat    = (int)$request->input("categoria", 0);
-        $sid    = (int)$request->input("cidade", 0);
+        $q    = trim((string)$request->get('q',''));
+        $city = trim((string)$request->get('city',''));
 
-        // combos
-        $categories = DB::table("category")->selectRaw("cat_id, category AS label")->orderBy("label")->get();
+        $sql = DB::table('business')->where('active', 1);
 
-        $cities = City::orderBy("city")->get(["city_id","city"]);
-
-        // query principal
-        $biz = DB::table("business")
-            ->select("biz_id","business_name","description","city","cid","sid");
-
-        if ($q !== "") {
-            $like = "%".$q."%";
-            $biz->where(function($w) use ($like){
-                $w->where("business_name","LIKE",$like)
-                  ->orWhere("description","LIKE",$like);
+        if ($q !== '') {
+            $like = "%$q%";
+            $sql->where(function($w) use ($like) {
+                $w->where('business_name', 'like', $like)
+                  ->orWhere('description',   'like', $like)
+                  ->orWhere('tags',          'like', $like);
             });
         }
-        if ($cat > 0) $biz->where("cid",$cat);
-        if ($sid > 0) $biz->where("sid",$sid);
 
-        $results = $biz->orderBy("business_name")->get();
+        if ($city !== '') {
+            // city no legado é texto livre; amarramos por slug da tabela city
+            $c = DB::table('city')->where('slug', $city)->first();
+            if ($c) {
+                $sql->where('city', 'like', $c->city); // aproximado ao legado
+            }
+        }
 
-        return view("search.index", compact("q","cat","sid","categories","cities","results"));
+        $items = $sql->orderByDesc('biz_id')->paginate(10)->appends($request->query());
+
+        return view('search.index', [
+            'items' => $items,
+            'q'     => $q,
+            'city'  => $city,
+        ]);
     }
 }

@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  php82-sqlite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, intl, pdo_sqlite, gd
+          coverage: none
+
+      - name: Install Composer deps (cached)
+        uses: ramsey/composer-install@v3
+        with:
+          dependency-versions: highest
+
+      - name: Prepare .env (SQLite) e APP_KEY
+        run: |
+          cp .env.example .env
+          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
+          mkdir -p database
+          touch database/database.sqlite
+          php artisan key:generate
+
+      - name: Migrate
+        run: php artisan migrate --force
+
+      - name: Smoke tests
+        run: php artisan test --stop-on-failure
+
+      - name: Sanity cache de config/rotas
+        run: |
+          php artisan config:cache
+          php artisan route:cache
+          php artisan optimize:clear
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: laravel-logs
+          path: storage/logs/*.log
+
+  php82-mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_DATABASE: bl_ci
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, intl, pdo_mysql, gd
+          coverage: none
+      - name: Install Composer deps (cached)
+        uses: ramsey/composer-install@v3
+      - name: Prepare .env (MySQL) e APP_KEY
+        run: |
+          cp .env.example .env
+          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
+          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/^DB_PORT=.*/DB_PORT=3306/' .env
+          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=bl_ci/' .env
+          sed -i 's/^DB_USERNAME=.*/DB_USERNAME=root/' .env
+          sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=root/' .env
+          php artisan key:generate
+      - name: Wait for MySQL
+        run: |
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            (echo > /dev/tcp/127.0.0.1/3306) >/dev/null 2>&1 && break || sleep 3;
+          done
+      - name: Migrate
+        run: php artisan migrate --force
+      - name: Smoke tests
+        run: php artisan test --stop-on-failure
+      - name: Sanity cache de config/rotas
+        run: |
+          php artisan config:cache
+          php artisan route:cache
+          php artisan optimize:clear
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"

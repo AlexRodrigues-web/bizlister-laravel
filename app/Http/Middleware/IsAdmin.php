@@ -1,28 +1,26 @@
-﻿<?php
+<?php
 
 namespace App\Http\Middleware;
 
 use Closure;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class IsAdmin
 {
-    public function handle(Request $request, Closure $next)
+    public function handle($request, Closure $next)
     {
-        $user = Auth::user();
+        $ok = Auth::check() && (
+            // Flag no banco
+            (bool) (Auth::user()->is_admin ?? false)
+            // OU Gate por e-mail (ENV ADMIN_EMAILS)
+            || Gate::allows('admin')
+        );
 
-        // Se no futuro users.is_admin existir, já funciona:
-        $hasFlag = ($user && property_exists($user, "is_admin") && (int)($user->is_admin) === 1);
-
-        // Fallback: whitelist (config/admin.php)
-        $whitelist = config('admin.superadmins', []);
-        $inList = $user && in_array(strtolower($user->email), array_map('strtolower', $whitelist), true);
-
-        if ($hasFlag || $inList) {
-            return $next($request);
+        if (!$ok) {
+            abort(403, 'Acesso negado.');
         }
 
-        abort(403, 'Acesso restrito ao administrador.');
+        return $next($request);
     }
 }

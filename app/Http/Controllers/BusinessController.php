@@ -6,7 +6,9 @@ use App\Models\Business;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;              // upload
 use Illuminate\Support\Str;
+use Intervention\Image\ImageManagerStatic as Image; // thumbs
 
 class BusinessController extends Controller
 {
@@ -44,51 +46,81 @@ class BusinessController extends Controller
 
     public function create()
     {
-        // ==== Categorias ====
+        // ==== Categorias (usa tabela real `categories`) ====
         $categories = collect();
         try {
-            if (Schema::hasTable('category')) {
-                $cols = Schema::getColumnListing('category');
-
+            if (Schema::hasTable('categories')) {
+                $cols = Schema::getColumnListing('categories');
+                // texto preferido
                 $labelCol = null;
-                foreach (['cat_name','category','name','title','label'] as $c) {
+                foreach (['category','label','category_name','name','title'] as $c) {
                     if (in_array($c, $cols, true)) { $labelCol = $c; break; }
                 }
+                // id garantido
+                $idCol = in_array('cat_id', $cols, true) ? 'cat_id' : (in_array('id',$cols,true) ? 'id' : null);
 
-                if ($labelCol && in_array('cat_id', $cols, true)) {
-                    $categories = DB::table('category')
-                        ->select('cat_id', DB::raw("$labelCol AS label"))
-                        ->orderBy('label')
-                        ->get();
-                } elseif (in_array('cat_id', $cols, true)) {
-                    $categories = DB::table('category')->select('cat_id')->get()
-                        ->map(function ($r) { $r->label = 'Categoria #'.$r->cat_id; return $r; });
+                if ($idCol) {
+                    if ($labelCol) {
+                        $categories = DB::table('categories')
+                            ->selectRaw("$idCol AS cat_id, $labelCol AS category")
+                            ->orderBy($labelCol)
+                            ->get();
+                    } else {
+                        $categories = DB::table('categories')
+                            ->selectRaw("$idCol AS cat_id")
+                            ->orderBy($idCol)
+                            ->get()
+                            ->map(function ($r) { $r->category = 'Categoria #'.$r->cat_id; return $r; });
+                    }
+                }
+            } elseif (Schema::hasTable('category')) {
+                // fallback para bases antigas
+                $cols = Schema::getColumnListing('category');
+                $labelCol = null;
+                foreach (['category','cat_name','label','name','title'] as $c) {
+                    if (in_array($c, $cols, true)) { $labelCol = $c; break; }
+                }
+                $idCol = in_array('cat_id',$cols,true) ? 'cat_id' : (in_array('id',$cols,true) ? 'id' : null);
+                if ($idCol) {
+                    if ($labelCol) {
+                        $categories = DB::table('category')
+                            ->selectRaw("$idCol AS cat_id, $labelCol AS category")
+                            ->orderBy($labelCol)
+                            ->get();
+                    } else {
+                        $categories = DB::table('category')
+                            ->selectRaw("$idCol AS cat_id")
+                            ->orderBy($idCol)
+                            ->get()
+                            ->map(function ($r) { $r->category = 'Categoria #'.$r->cat_id; return $r; });
+                    }
                 }
             }
         } catch (\Throwable $e) {
             $categories = collect();
         }
 
-        // ==== Cidades (dinâmico de verdade) ====
+        // ==== Cidades (dinâmico) ====
         $cities = collect();
         try {
-            $meta = $this->detectSimpleTable('city','cities');
-            if ($meta['table'] && $meta['idCol']) {
-                // Monta SELECT seguro com alias padronizado
-                $id   = $meta['idCol'];
-                $name = $meta['labelCol']; // pode ser null
-
-                if ($name) {
-                    $cities = DB::table($meta['table'])
-                        ->selectRaw("$id AS city_id, COALESCE($name, CONCAT('Cidade #', $id)) AS label")
-                        ->orderBy('label')
-                        ->get();
-                } else {
-                    // Sem coluna de nome, cai no fallback
-                    $cities = DB::table($meta['table'])
-                        ->selectRaw("$id AS city_id, CONCAT('Cidade #', $id) AS label")
-                        ->orderBy('label')
-                        ->get();
+            // preferimos `cities`, mas detectamos ambos
+            $table = Schema::hasTable('cities') ? 'cities' : (Schema::hasTable('city') ? 'city' : null);
+            if ($table) {
+                $cols = Schema::getColumnListing($table);
+                $idCol   = in_array('city_id',$cols,true) ? 'city_id' : (in_array('id',$cols,true) ? 'id' : null);
+                $labelCol= in_array('city',$cols,true)    ? 'city'    : (in_array('name',$cols,true) ? 'name' : null);
+                if ($idCol) {
+                    if ($labelCol) {
+                        $cities = DB::table($table)
+                            ->selectRaw("$idCol AS city_id, $labelCol AS label")
+                            ->orderBy($labelCol)
+                            ->get();
+                    } else {
+                        $cities = DB::table($table)
+                            ->selectRaw("$idCol AS city_id, CONCAT('Cidade #', $idCol) AS label")
+                            ->orderBy($idCol)
+                            ->get();
+                    }
                 }
             }
         } catch (\Throwable $e) {
@@ -116,25 +148,32 @@ class BusinessController extends Controller
             'description'   => $validated['description'] ?? null,
         ];
 
-        // Preenche 'city' textual se existir essa coluna no legacy
+        // ===== Normalização: evita NULL em colunas NOT NULL quando o middleware zera "" => NULL =====
+        foreach (["menu","phone","status","address"] as $f) {
+            if (Schema::hasColumn("business", $f) && !array_key_exists($f, $data)) {
+                $val = $request->input($f);
+                if (is_null($val)) { $val = ""; } // força string vazia em vez de NULL
+                $data[$f] = $val;
+            }
+        }
+
+        // Preenche 'city' textual se existir essa coluna no legado
         if (Schema::hasColumn('business', 'city')) {
             try {
-                $meta = $this->detectSimpleTable('city','cities');
-                if ($meta['table'] && $meta['idCol']) {
-                    $id   = $meta['idCol'];
-                    $name = $meta['labelCol'];
-                    $row = DB::table($meta['table'])
-                        ->where($id, $data['sid'])
-                        ->selectRaw(
-                            ($name ? "COALESCE($name, CONCAT('Cidade #', $id))" : "CONCAT('Cidade #', $id)")
-                            . " AS label"
-                        )
-                        ->first();
-                    if ($row) $data['city'] = $row->label;
+                $table = Schema::hasTable('cities') ? 'cities' : (Schema::hasTable('city') ? 'city' : null);
+                if ($table) {
+                    $cols = Schema::getColumnListing($table);
+                    $idCol   = in_array('city_id',$cols,true) ? 'city_id' : (in_array('id',$cols,true) ? 'id' : null);
+                    $labelCol= in_array('city',$cols,true)    ? 'city'    : (in_array('name',$cols,true) ? 'name' : null);
+                    if ($idCol) {
+                        $row = DB::table($table)
+                            ->where($idCol, $data['sid'])
+                            ->selectRaw(($labelCol ? $labelCol : "CONCAT('Cidade #', $idCol)")." AS label")
+                            ->first();
+                        if ($row) $data['city'] = $row->label;
+                    }
                 }
-            } catch (\Throwable $e) {
-                // silencioso
-            }
+            } catch (\Throwable $e) { /* silencioso */ }
         }
 
         // Campos extras comuns no legado
@@ -144,11 +183,49 @@ class BusinessController extends Controller
             }
         }
 
-        // Upload
-        if ($request->hasFile('image') && Schema::hasColumn('business','image')) {
-            $path = $request->file('image')->store('business', 'public');
-            $data['image'] = $path;
+        // ============ Upload + Thumbs (1200x800 e 360x240, WEBP) ============
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+            $baseDir  = 'businesses';
+            $basename = Str::random(40);
+
+            // extensão do original
+            $ext = strtolower($request->file('image')->getClientOriginalExtension() ?: 'jpg');
+
+            // 1) Original
+            $origRel = $baseDir.'/'.$basename.'.'.$ext;
+            $request->file('image')->storeAs($baseDir, $basename.'.'.$ext, 'public');
+            if (Schema::hasColumn('business', 'image')) {
+                $data['image'] = $origRel;
+            }
+
+            try {
+                $srcPath = $request->file('image')->getRealPath();
+
+                // 2) LG 1200x800 (webp)
+                $imgLg = Image::make($srcPath)
+                    ->orientate()
+                    ->fit(1200, 800, function($c){ $c->upsize(); });
+                $lgRel = $baseDir.'/'.$basename.'_lg.webp';
+                Storage::disk('public')->put($lgRel, (string) $imgLg->encode('webp', 85));
+
+                // 3) SM 360x240 (webp)
+                $imgSm = Image::make($srcPath)
+                    ->orientate()
+                    ->fit(360, 240, function($c){ $c->upsize(); });
+                $smRel = $baseDir.'/'.$basename.'_sm.webp';
+                Storage::disk('public')->put($smRel, (string) $imgSm->encode('webp', 85));
+
+                // Persistência — usa novas colunas se existirem, senão mantém legado
+                if (Schema::hasColumn('business', 'image_path_lg')) { $data['image_path_lg'] = $lgRel; }
+                if (Schema::hasColumn('business', 'image_path_sm')) { $data['image_path_sm'] = $smRel; }
+                if (Schema::hasColumn('business', 'image_lg'))      { $data['image_lg']      = $lgRel; }
+                if (Schema::hasColumn('business', 'image_sm'))      { $data['image_sm']      = $smRel; }
+
+            } catch (\Throwable $e) {
+                // segue com o original
+            }
         }
+        // ====================================================================
 
         $biz = Business::create($data);
 
@@ -161,38 +238,44 @@ class BusinessController extends Controller
     {
         $biz = Business::findOrFail($id);
 
-        // rótulos bonitos (opcional)
+        // rótulo da categoria (usa `categories`, fallback `category`)
         $category = null;
         try {
-            if (Schema::hasTable('category')) {
-                $cols = Schema::getColumnListing('category');
+            if (Schema::hasTable('categories') || Schema::hasTable('category')) {
+                $table = Schema::hasTable('categories') ? 'categories' : 'category';
+                $cols  = Schema::getColumnListing($table);
+
                 $labelCol = null;
-                foreach (['category','cat_name','name','title','label'] as $c) {
+                foreach (['category','label','category_name','name','title'] as $c) {
                     if (in_array($c, $cols, true)) { $labelCol = $c; break; }
                 }
-                if ($labelCol) {
-                    $category = DB::table('category')
-                        ->where('cat_id', $biz->cid)
-                        ->selectRaw("cat_id, $labelCol AS category")
+
+                $idCol = in_array('cat_id',$cols,true) ? 'cat_id' : (in_array('id',$cols,true) ? 'id' : null);
+
+                if ($idCol) {
+                    $category = DB::table($table)
+                        ->where($idCol, $biz->cid)
+                        ->selectRaw("$idCol AS cat_id, " . ($labelCol ? "$labelCol" : "CONCAT('Categoria #', $idCol)") . " AS category")
                         ->first();
                 }
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) { /* silencioso */ }
 
+        // rótulo da cidade (detecta city/cities)
         $city = null;
         try {
             $meta = $this->detectSimpleTable('city','cities');
             if ($meta['table'] && $meta['idCol']) {
-                $id   = $meta['idCol'];
-                $name = $meta['labelCol'];
+                $idCol   = $meta['idCol'];
+                $nameCol = $meta['labelCol'];
                 $city = DB::table($meta['table'])
-                    ->where($id, $biz->sid)
-                    ->selectRaw($id." AS city_id, ".
-                        ($name ? "COALESCE($name, CONCAT('Cidade #', $id))" : "CONCAT('Cidade #', $id)")
+                    ->where($idCol, $biz->sid)
+                    ->selectRaw($idCol." AS city_id, ".
+                        ($nameCol ? "COALESCE($nameCol, CONCAT('Cidade #', $idCol))" : "CONCAT('Cidade #', $idCol)")
                         ." AS city")
                     ->first();
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) { /* silencioso */ }
 
         return view('business.show', compact('biz','category','city'));
     }

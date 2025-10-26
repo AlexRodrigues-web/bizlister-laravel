@@ -1,87 +1,145 @@
-﻿<div class="bg-white border-b border-gray-100">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-between h-16">
+{{-- resources/views/layouts/navigation.blade.php --}}
+@php
+    use Illuminate\Support\Str;
+@endphp
+<div class="bg-red-700 text-white">
+  <div x-data="{ openNav:false }" class="mx-auto max-w-7xl px-4">
+    <div class="flex h-14 items-center justify-between">
 
-      <div class="flex">
-        <!-- Logo -->
-        <div class="shrink-0 flex items-center">
-          <a href="{{ url('/') }}" class="font-semibold">BizLister</a>
-        </div>
+      {{-- ESQUERDA: Logo + menus principais --}}
+      <div class="flex items-center gap-6">
+        {{-- LOGO (coloque sua imagem legada em public/legacy/logo.png) --}}
+        <a href="{{ url('/') }}" class="inline-flex items-center gap-2">
+          <img src="{{ asset('legacy/logo.png') }}" alt="BizLister" class="h-8 w-auto" />
+          <span class="sr-only">BizLister</span>
+        </a>
 
-        <!-- Links (lado esquerdo) -->
-        <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-          <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-            {{ __('Dashboard') }}
-          </x-nav-link>
+        {{-- Menus desktop --}}
+        <nav class="hidden md:flex items-center gap-2 text-sm font-medium">
+          <a href="{{ url('/') }}" class="px-3 py-2 hover:bg-red-800 rounded">Lar</a>
 
-          <x-nav-link :href="route('categories.index')" :active="request()->routeIs('categories.*')">
-            {{ __('Categorias') }}
-          </x-nav-link>
+          {{-- NAVeGAR (dropdown simples com links fixos) --}}
+          <div x-data="{ open:false }" class="relative">
+            <button @mouseenter="open=true" @mouseleave="open=false"
+                    class="px-3 py-2 hover:bg-red-800 rounded inline-flex items-center gap-1">
+              Navegar
+              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 12a1 1 0 01-.707-.293l-4-4a1 1 0 111.414-1.414L10 9.586l3.293-3.293a1 1 0 011.414 1.414l-4 4A1 1 0 0110 12z" clip-rule="evenodd"/></svg>
+            </button>
+            <div x-show="open" @mouseenter="open=true" @mouseleave="open=false"
+                 x-transition
+                 class="absolute left-0 mt-2 w-56 rounded-lg bg-white text-slate-800 shadow-lg ring-1 ring-black/5 z-30">
+              <a href="{{ route('search.index') }}" class="block px-4 py-2 hover:bg-slate-100">Todos os negócios</a>
+              <a href="{{ route('search.index', ['sort' => 'popular']) }}" class="block px-4 py-2 hover:bg-slate-100">negócios populares</a>
+              <a href="{{ route('search.index', ['featured' => 1]) }}" class="block px-4 py-2 hover:bg-slate-100">Empresas em Destaque</a>
+            </div>
+          </div>
 
-          <x-nav-link :href="route('cities.index')" :active="request()->routeIs('cities.*')">
-            {{ __('Cidades') }}
-          </x-nav-link>
+          {{-- CATEGORIAS (dropdown povoado do banco) --}}
+          <div x-data="{ open:false }" class="relative">
+            <button @mouseenter="open=true" @mouseleave="open=false"
+                    class="px-3 py-2 hover:bg-red-800 rounded inline-flex items-center gap-1">
+              Categorias
+              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 12a1 1 0 01-.707-.293l-4-4a1 1 0 111.414-1.414L10 9.586l3.293-3.293a1 1 0 011.414 1.414l-4 4A1 1 0 0110 12z" clip-rule="evenodd"/></svg>
+            </button>
+            <div x-show="open" @mouseenter="open=true" @mouseleave="open=false"
+                 x-transition
+                 class="absolute left-0 mt-2 w-64 rounded-lg bg-white text-slate-800 shadow-lg ring-1 ring-black/5 z-30">
+              @forelse($__navCats ?? collect() as $c)
+                <a href="{{ route('categories.show', ['id' => $c->cat_id, 'slug' => $c->slug ?? Str::slug($c->label ?? '')]) }}"
+                   class="block px-4 py-2 hover:bg-slate-100">
+                  {{ $c->label ?? ('Categoria #'.$c->cat_id) }}
+                </a>
+              @empty
+                <span class="block px-4 py-2 text-slate-500">Sem categorias</span>
+              @endforelse
+            </div>
+          </div>
 
-          <x-nav-link :href="route('search.index')" :active="request()->routeIs('search.*')">
-            {{ __('Buscar') }}
-          </x-nav-link>
+          {{-- LINKS públicos adicionais --}}
+          <a href="{{ route('cities.index') }}" class="px-3 py-2 hover:bg-red-800 rounded">Cidades</a>
+          <a href="{{ route('contact.show') }}" class="px-3 py-2 hover:bg-red-800 rounded">Contato</a>
 
+          {{-- Link para área admin (se autorizado) --}}
           @can('admin')
-            <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
-              {{ __('Admin') }}
-            </x-nav-link>
+            <a href="{{ route('admin.dashboard') }}" class="px-3 py-2 hover:bg-red-800 rounded">Admin</a>
           @endcan
 
+          {{-- Cadastrar (enviar) – só logado --}}
           @auth
-            <x-nav-link :href="route('business.create')" :active="request()->routeIs('business.create')">
-              {{ __('Cadastrar Negócio') }}
-            </x-nav-link>
+            <a href="{{ route('business.create') }}" class="px-3 py-2 hover:bg-red-800 rounded">Cadastrar Negócio</a>
           @endauth
-        </div>
+        </nav>
       </div>
 
-      <!-- Lado direito -->
-      <div class="hidden sm:flex sm:items-center sm:ml-6">
+      {{-- DIREITA: conta/entrar --}}
+      <div class="hidden md:flex items-center gap-4 text-sm">
         @auth
-          <x-dropdown align="right" width="48">
-            <x-slot name="trigger">
-              <button type="button" class="flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none transition">
-                <div>{{ Auth::user()->name }}</div>
-                <div class="ml-1">
-                  <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true">
-                    <path fill-rule="evenodd" clip-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                  </svg>
-                </div>
-              </button>
-            </x-slot>
-
-            <x-slot name="content">
+          <div x-data="{ open:false }" class="relative">
+            <button @click="open=!open" class="inline-flex items-center gap-2 px-3 py-2 bg-red-800/50 hover:bg-red-800 rounded">
+              {{ Auth::user()->name }}
+              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+            </button>
+            <div x-show="open" @click.outside="open=false" x-transition
+                 class="absolute right-0 mt-2 w-48 rounded-lg bg-white text-slate-800 shadow-lg ring-1 ring-black/5">
               <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <x-dropdown-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">
-                  {{ __('Sair') }}
-                </x-dropdown-link>
+                <button class="w-full text-left px-4 py-2 hover:bg-slate-100">Sair</button>
               </form>
-            </x-slot>
-          </x-dropdown>
+            </div>
+          </div>
+        @else
+          <a href="{{ route('login') }}" class="px-3 py-2 bg-red-800/50 hover:bg-red-800 rounded">Entrar</a>
         @endauth
-
-        @guest
-          <a href="{{ route('login') }}" class="text-sm text-gray-600 hover:text-gray-900">
-            {{ __('Entrar') }}
-          </a>
-        @endguest
       </div>
 
-      <!-- Hamburger (mobile) -->
-      <div class="-mr-2 flex items-center sm:hidden">
-        <button class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none" type="button" aria-label="Abrir menu">
-          <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      </div>
+      {{-- MOBILE: botão --}}
+      <button @click="openNav=!openNav" class="md:hidden inline-flex items-center justify-center p-2 rounded hover:bg-red-800"
+              aria-label="Abrir menu">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+    </div>
 
+    {{-- MOBILE: menu colapsável --}}
+    <div x-show="openNav" x-transition class="md:hidden pb-4 space-y-1 text-sm">
+      <a href="{{ url('/') }}" class="block px-3 py-2 rounded hover:bg-red-800">Lar</a>
+
+      <details class="px-2" >
+        <summary class="cursor-pointer px-1 py-2 rounded hover:bg-red-800">Navegar</summary>
+        <div class="mt-1 ml-3 space-y-1 bg-white text-slate-800 rounded">
+          <a class="block px-3 py-2 hover:bg-slate-100" href="{{ route('search.index') }}">Todos os negócios</a>
+          <a class="block px-3 py-2 hover:bg-slate-100" href="{{ route('search.index',['sort'=>'popular']) }}">negócios populares</a>
+          <a class="block px-3 py-2 hover:bg-slate-100" href="{{ route('search.index',['featured'=>1]) }}">Empresas em Destaque</a>
+        </div>
+      </details>
+
+      <details class="px-2">
+        <summary class="cursor-pointer px-1 py-2 rounded hover:bg-red-800">Categorias</summary>
+        <div class="mt-1 ml-3 space-y-1 bg-white text-slate-800 rounded">
+          @forelse($__navCats ?? collect() as $c)
+            <a class="block px-3 py-2 hover:bg-slate-100"
+               href="{{ route('categories.show', ['id' => $c->cat_id, 'slug' => $c->slug ?? Str::slug($c->label ?? '')]) }}">
+              {{ $c->label ?? ('Categoria #'.$c->cat_id) }}
+            </a>
+          @empty
+            <span class="block px-3 py-2 text-slate-500">Sem categorias</span>
+          @endforelse
+        </div>
+      </details>
+
+      <a href="{{ route('cities.index') }}" class="block px-3 py-2 rounded hover:bg-red-800">Cidades</a>
+      <a href="{{ route('contact.show') }}" class="block px-3 py-2 rounded hover:bg-red-800">Contato</a>
+
+      @can('admin')
+        <a href="{{ route('admin.dashboard') }}" class="block px-3 py-2 rounded hover:bg-red-800">Admin</a>
+      @endcan
+      @auth
+        <a href="{{ route('business.create') }}" class="block px-3 py-2 rounded hover:bg-red-800">Cadastrar Negócio</a>
+      @else
+        <a href="{{ route('login') }}" class="block px-3 py-2 rounded hover:bg-red-800">Entrar</a>
+      @endauth
     </div>
   </div>
 </div>
