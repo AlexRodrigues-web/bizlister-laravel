@@ -1,42 +1,87 @@
 {{-- PUBLIC_UI_V2_MARK --}}
-@extends('layouts.app')
+@extends('layouts.app', ['title' => 'Categorias'])
 
 @section('content')
-<div class="mx-auto max-w-6xl px-4 py-8">
-  <header class="mb-6 flex items-end justify-between gap-4">
+<div class="container py-4">
+
+  {{-- CabeÃƒÂ§alho + busca --}}
+  <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4">
     <div>
-      <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800">Categorias</h1>
-      <p class="text-slate-600 text-sm">Navegue por todas as categorias do BizLister.</p>
+      <h1 class="h3 fw-bold mb-1">Categorias</h1>
+      <p class="text-muted mb-0">Navegue por todas as categorias do BizLister.</p>
     </div>
-    <form method="get" action="{{ route('categories.index') }}" class="hidden md:block">
-      <input name="q" value="{{ request('q') }}" placeholder="Buscar..."
-             class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none">
+
+    <form method="GET" action="{{ route('categories.index') }}" class="w-100 w-md-auto" role="search">
+      <div class="input-group">
+        <input
+          type="text"
+          name="q"
+          value="{{ request('q') }}"
+          class="form-control"
+          placeholder="Buscar..."
+          aria-label="Buscar categorias"
+        >
+        <button class="btn btn-primary" type="submit">Buscar</button>
+      </div>
     </form>
-  </header>
+  </div>
 
   @php
+    // Aceita $categories ou $cats Ã¢â‚¬â€ e tanto Collection quanto Paginator
     $items = $categories ?? $cats ?? collect();
+
+    // Helper para extrair campos de esquemas diferentes
+    $getId = function($c) { return $c->cat_id ?? $c->id ?? null; };
+    $getName = function($c) {
+        return $c->category_name
+            ?? $c->category
+            ?? $c->cat_name
+            ?? $c->name
+            ?? $c->label
+            ?? ($c->cat_id ?? $c->id ? 'Categoria #'.($c->cat_id ?? $c->id) : 'Categoria');
+    };
+    $getCount = function($c) { return $c->business_count ?? $c->count ?? null; };
   @endphp
 
-  @if($items->count() === 0)
-    <div class="rounded-xl border border-slate-200 bg-white p-6 text-slate-600">Nenhuma categoria encontrada.</div>
+  @if(($items instanceof \Illuminate\Support\Collection ? $items->count() : $items->total() ?? $items->count()) === 0)
+    <div class="alert alert-secondary mb-0">
+      Nenhuma categoria encontrada.
+    </div>
   @else
-    <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+    <div class="row g-3">
       @foreach($items as $c)
         @php
-          $id   = $c->cat_id   ?? $c->id   ?? null;
-          $name = $c->category ?? $c->cat_name ?? $c->name ?? $c->label ?? ('Categoria #'.$id);
+          $id   = $getId($c);
+          $name = $getName($c);
           $slug = \Illuminate\Support\Str::slug($name ?? 'categoria');
-          $url  = $id ? route('categories.show', [$id, $slug]) : '#';
+          $url  = $id ? route('categories.show', ['id' => $id, 'slug' => $slug]) : '#';
+          $qty  = $getCount($c);
         @endphp
-        <a href="{{ $url }}" class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition">
-          <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-slate-800 group-hover:text-slate-900">{{ $name }}</h2>
-            <span class="text-xs text-slate-500">Ver</span>
-          </div>
-        </a>
+
+        <div class="col-12 col-sm-6 col-md-4">
+          <a href="{{ $url }}" class="text-decoration-none">
+            <div class="card h-100 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between gap-2">
+                  <h2 class="h6 fw-semibold text-dark mb-1">{{ $name }}</h2>
+                  @if(!is_null($qty))
+                    <span class="badge text-bg-light">{{ $qty }}</span>
+                  @endif
+                </div>
+                <span class="text-muted small">Ver</span>
+              </div>
+            </div>
+          </a>
+        </div>
       @endforeach
     </div>
+
+    {{-- PaginaÃƒÂ§ÃƒÂ£o (se for paginator) --}}
+    @if(method_exists($items, 'links'))
+      <div class="mt-3">
+        {{ $items->withQueryString()->links() }}
+      </div>
+    @endif
   @endif
 </div>
 @endsection

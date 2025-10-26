@@ -1,61 +1,191 @@
+{{-- resources/views/categories/show.blade.php --}}
 {{-- PUBLIC_UI_V2_MARK --}}
 @extends('layouts.app')
 
+@section('title', (optional($category)->category
+    ?? optional($category)->name
+    ?? optional($category)->label
+    ?? 'Categoria').' &mdash; '.config('app.name'))
+
 @section('content')
-<div class="mx-auto max-w-6xl px-4 py-8">
+<div class="container py-4">
+
+  {{-- micro-up de UI sem quebrar nada --}}
+  <style>
+    .card.hoverable{transition:transform .15s ease, box-shadow .15s ease}
+    .card.hoverable:hover{transform:translateY(-2px); box-shadow:0 .5rem 1rem rgba(0,0,0,.08)}
+    .badge-truncate{max-width:10rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .line-2{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  </style>
+
   @php
-    $catName = $category->category ?? $category->cat_name ?? $category->name ?? $category->label ?? "Categoria";
+    // === Nomes/coleções (compat com legado) ===
+    $catName = $category->name
+      ?? $category->cat_name
+      ?? $category->category_name
+      ?? $category->label
+      ?? $category->category
+      ?? 'Categoria';
+
+    $list = $businesses ?? $items ?? collect();
+    if (is_array($list)) $list = collect($list);
+
+    $isPaginator = $list instanceof \Illuminate\Contracts\Pagination\Paginator
+                || $list instanceof \Illuminate\Pagination\LengthAwarePaginator;
+
+    $totalCount = method_exists($list, 'total') ? (int)$list->total() : (int)$list->count();
+
+    $q   = trim((string) request('q', ''));
+    $ord = trim((string) request('ord', ''));
   @endphp
 
-  <header class="mb-6 flex items-end justify-between gap-4">
+  {{-- Breadcrumb + título --}}
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{{ url('/') }}">Início</a></li>
+      <li class="breadcrumb-item"><a href="{{ route('categories.index') }}">Categorias</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ $catName }}</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-2">
     <div>
-      <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800">{{ $catName }}</h1>
-      <p class="text-slate-600 text-sm">Negócios nessa categoria.</p>
+      <h1 class="h3 mb-1">{{ $catName }}</h1>
+      <p class="text-muted small mb-0">
+        @if($q !== '')
+          Exibindo <strong>{{ $totalCount }}</strong> resultado(s) para &ldquo;{{ $q }}&rdquo;.
+        @else
+          {{ $totalCount }} negócio(s) nesta categoria.
+        @endif
+      </p>
     </div>
-    <a href="{{ route('categories.index') }}" class="text-sm rounded-lg border border-slate-300 px-3 py-2 hover:bg-slate-50">← Todas categorias</a>
-  </header>
 
-  @php $list = $businesses ?? $items ?? collect(); @endphp
+    {{-- Busca local + ordenação (preserva query-string) --}}
+    <form method="get" class="d-flex align-items-stretch gap-2" role="search" aria-label="Buscar na categoria">
+      <input
+        type="search"
+        name="q"
+        value="{{ $q }}"
+        class="form-control form-control-sm"
+        placeholder="Buscar nesta categoria..."
+        aria-label="Buscar nesta categoria"
+      >
+      <select name="ord" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">Ordenar por</option>
+        <option value="recentes" {{ $ord==='recentes' ? 'selected' : '' }}>Mais recentes</option>
+        <option value="nome_az"  {{ $ord==='nome_az'  ? 'selected' : '' }}>Nome (A&ndash;Z)</option>
+        <option value="nome_za"  {{ $ord==='nome_za'  ? 'selected' : '' }}>Nome (Z&ndash;A)</option>
+      </select>
 
-  @if($list->count() === 0)
-    <div class="rounded-xl border border-slate-200 bg-white p-6 text-slate-600">Nenhum negócio nesta categoria.</div>
+      {{-- preserva outros filtros sem duplicar --}}
+      @foreach(request()->except(['q','ord','page']) as $k => $v)
+        <input type="hidden" name="{{ $k }}" value="{{ is_array($v) ? implode(',', $v) : $v }}">
+      @endforeach
+
+      <button class="btn btn-outline-secondary btn-sm" type="submit">Aplicar</button>
+    </form>
+  </div>
+
+  @if($totalCount === 0)
+    <div class="alert alert-info" role="alert">
+      Nenhum negócio nesta categoria.
+      @if($q !== '')
+        <div class="mt-1 small">Tente remover o filtro ou usar outros termos.</div>
+      @endif
+    </div>
   @else
-    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    {{-- Grade de cards --}}
+    <div class="row g-3">
       @foreach($list as $biz)
         @php
+          // ==== Escolha da imagem (sem vazar erro/JSON) ====
           $img = null;
           $cands = [
             $biz->image_lg ?? null,
             $biz->image ?? null,
-            ($biz->biz_id ?? null) ? ('businesses/'.($biz->image ?? ''.$biz->biz_id.'.jpg')) : null,
+            ($biz->biz_id ?? null) ? ('businesses/'.($biz->image ?? ''.($biz->biz_id).'.jpg')) : null,
           ];
           foreach ($cands as $p) {
             if (!$p) continue;
-            if (is_string($p) && (\Illuminate\Support\Str::startsWith($p, ['http://','https://']))) { $img = $p; break; }
-            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($p)) { $img = \Illuminate\Support\Facades\Storage::url($p); break; }
-            if (file_exists(public_path($p))) { $img = url($p); break; }
+            if (is_string($p) && \Illuminate\Support\Str::startsWith($p, ['http://','https://'])) { $img = $p; break; }
+            if (is_string($p) && \Illuminate\Support\Facades\Storage::disk('public')->exists($p)) { $img = \Illuminate\Support\Facades\Storage::url($p); break; }
+            if (is_string($p) && file_exists(public_path($p))) { $img = url($p); break; }
           }
           if (!$img) $img = asset('images/placeholder-800x600.png');
 
-          $name = $biz->business_name ?? 'Negócio';
+          // Campos exibidos (somente strings/escapados)
+          $name = $biz->business_name ?? $biz->name ?? 'Negócio';
           $desc = $biz->short_description ?? $biz->description ?? '';
-          $url  = route('business.show', [$biz->biz_id, \Illuminate\Support\Str::slug($name)]);
+          $city = $biz->city_name ?? $biz->city ?? $biz->cidade ?? '';
+          $cat  = $biz->category_name ?? $biz->category ?? $biz->cat_name ?? '';
+          $slug = \Illuminate\Support\Str::slug($name);
+          $url  = !empty($biz->biz_id) ? route('business.show', [$biz->biz_id, $slug]) : '#';
         @endphp
 
-        <a href="{{ $url }}" class="block rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition">
-          <div class="aspect-[4/3] overflow-hidden rounded-t-2xl bg-slate-100">
-            <img src="{{ $img }}" alt="Imagem de {{ $name }}" class="h-full w-full object-cover">
+        <div class="col-12 col-sm-6 col-lg-4">
+          <div class="card h-100 shadow-sm hoverable">
+            <a href="{{ $url }}" class="text-decoration-none" aria-label="Abrir {{ $name }}">
+              <div class="ratio ratio-4x3 bg-light">
+                <img
+                  src="{{ $img }}"
+                  alt="Imagem de {{ $name }}"
+                  class="w-100 h-100"
+                  style="object-fit: cover;"
+                  loading="lazy"
+                  decoding="async"
+                  fetchpriority="low"
+                >
+              </div>
+            </a>
+
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <a href="{{ $url }}" class="flex-grow-1 text-decoration-none text-dark">
+                  <h3 class="h6 mb-1 text-truncate" title="{{ $name }}">{{ $name }}</h3>
+                </a>
+                {{-- Badges opcionais (strings apenas) --}}
+                @if(is_string($cat) && $cat !== '')
+                  <span class="badge text-bg-light border badge-truncate" title="{{ $cat }}">{{ $cat }}</span>
+                @endif
+                @if(is_string($city) && $city !== '')
+                  <span class="badge text-bg-light border badge-truncate" title="{{ $city }}">{{ $city }}</span>
+                @endif
+              </div>
+
+              @if (is_string($desc) && trim($desc) !== '')
+                <p class="card-text small text-muted mb-3 line-2">{{ $desc }}</p>
+              @endif
+
+              <div class="mt-auto d-flex align-items-center justify-content-between">
+                <a href="{{ $url }}" class="btn btn-primary btn-sm">Ver detalhes</a>
+
+                {{-- Bookmark opcional, só se rota existir e usuário logado --}}
+                @auth
+                  @if (Route::has('business.bookmark') && !empty($biz->biz_id))
+                    <form method="POST" action="{{ route('business.bookmark', $biz->biz_id) }}">
+                      @csrf
+                      <button class="btn btn-outline-secondary btn-sm" type="submit" title="Salvar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                             fill="currentColor" class="bi bi-bookmark" viewBox="0 0 16 16" aria-hidden="true">
+                          <path d="M2 2v13.5l6-3 6 3V2a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/>
+                        </svg>
+                      </button>
+                    </form>
+                  @endif
+                @endauth
+              </div>
+            </div>
           </div>
-          <div class="p-4">
-            <h3 class="font-semibold text-slate-800">{{ $name }}</h3>
-            @if($desc)
-              <p class="mt-1 text-sm text-slate-600 line-clamp-2">{{ $desc }}</p>
-            @endif
-            <span class="mt-3 inline-block text-sm text-slate-700 underline">Ver detalhes</span>
-          </div>
-        </a>
+        </div>
       @endforeach
     </div>
+
+    {{-- Paginação (se for paginator) --}}
+    @if($isPaginator && method_exists($list, 'links'))
+      <div class="mt-4">
+        {{ $list->withQueryString()->links() }}
+      </div>
+    @endif
   @endif
 </div>
 @endsection

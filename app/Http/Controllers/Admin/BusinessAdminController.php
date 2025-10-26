@@ -18,10 +18,15 @@ class BusinessAdminController extends Controller
         $cid = $request->query('cid');
         $sid = $request->query('sid');
 
+        // === Listagem com nomes de categoria/cidade ===
         $rows = DB::table('business as b')
-            ->leftJoin('category as c', 'c.cat_id', '=', 'b.cid')
-            ->leftJoin('city as ci',   'ci.city_id', '=', 'b.sid')
-            ->select('b.*', 'c.category as category_name', 'ci.city as city_name')
+            ->leftJoin('categories as c', 'c.cat_id', '=', 'b.cid')
+            ->leftJoin('city as ci',        'ci.city_id', '=', 'b.sid')
+            ->select(
+                'b.*',
+                DB::raw('c.category as category_name'),
+                DB::raw('ci.city as city_name')
+            )
             ->when($q !== '', function ($qb) use ($q) {
                 $qb->where(function ($w) use ($q) {
                     $w->where('b.business_name', 'like', "%$q%")
@@ -34,36 +39,48 @@ class BusinessAdminController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $cats   = DB::table('category')->orderBy('category')->get();
-        $cities = DB::table('city')->orderBy('city')->get();
+        // === Filtros (views esperam $cats e $cities) ===
+        $cats = DB::table('categories')
+            ->select('cat_id', 'category')
+            ->orderBy('category')
+            ->get();
+
+        $cities = DB::table('city')
+            ->select('city_id', 'city')
+            ->orderBy('city')
+            ->get();
 
         return view('admin.businesses.index', compact('rows', 'q', 'cid', 'sid', 'cats', 'cities'));
     }
 
-    /**
-     * Form de criação – reaproveita a view de edição com $row vazio.
-     */
+    /** Form de criação — views esperam $cats, $cities e (às vezes) $item */
     public function create()
     {
-        // $row vazio para a view detectar "modo criar"
-        $row = (object)[];
+        $item = (object)[]; // mantém a view feliz
 
-        $cats   = DB::table('category')->orderBy('category')->get();
-        $cities = DB::table('city')->orderBy('city')->get();
+        $cats = DB::table('categories')
+            ->select('cat_id', 'category')
+            ->orderBy('category')
+            ->get();
 
-        return view('admin.businesses.edit', compact('row', 'cats', 'cities'));
+        $cities = DB::table('city')
+            ->select('city_id', 'city')
+            ->orderBy('city')
+            ->get();
+
+        // Use a view admin/businesses/create.blade.php
+        return view('admin.businesses.create', compact('item', 'cats', 'cities'));
     }
 
-    /**
-     * Salva um novo negócio (evita NULL em campos legados como 'menu').
-     */
+    /** Salvar novo — aceita 'sid' ou 'city_id' vindos da view */
     public function store(Request $request): RedirectResponse
     {
+        $sid = $request->input('sid', $request->input('city_id'));
+
         $data = $request->validate([
             'business_name' => ['required', 'string', 'max:255'],
             'description'   => ['nullable', 'string'],
-            'cid'           => ['required', 'integer', 'exists:category,cat_id'],
-            'sid'           => ['required', 'integer', 'exists:city,city_id'],
+            'cid'           => ['required', 'integer', 'exists:categories,cat_id'], // <-- categories
             'menu'          => ['nullable', 'integer'],
             'phone'         => ['nullable', 'string', 'max:50'],
             'address'       => ['nullable', 'string', 'max:255'],
@@ -71,77 +88,82 @@ class BusinessAdminController extends Controller
             'image'         => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
-        // Normalização – middleware ConvertEmptyStringsToNull joga "" => null.
-        // Evitamos violar NOT NULL (menu, por ex) e mantemos legado feliz.
-        if (Schema::hasColumn('business', 'menu')) {
-            $data['menu'] = isset($data['menu']) ? (int)$data['menu'] : 0;
-        }
-        foreach (['phone','address','status'] as $f) {
-            if (Schema::hasColumn('business', $f)) {
-                $data[$f] = isset($data[$f]) ? (string)$data[$f] : '';
-            }
+        // valida cidade
+        if (!is_numeric($sid) || !DB::table('city')->where('city_id', (int)$sid)->exists()) {
+            return back()->withErrors(['sid' => 'Cidade inválida.'])->withInput();
         }
 
-        // Preenche 'city' textual se a coluna existir no legado
-        if (Schema::hasColumn('business', 'city')) {
-            $cityRow = DB::table('city')
-                ->where('city_id', $data['sid'])
-                ->selectRaw("COALESCE(city, CONCAT('Cidade #', city_id)) AS label")
-                ->first();
-            if ($cityRow) {
-                $data['city'] = $cityRow->label;
-            }
-        }
+        $cols = Schema::getColumnListing('business');
+        $has  = fn(string $c) => in_array($c, $cols, true);
 
-        // Upload simples (mantém compat com coluna 'image' caso exista)
-        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+        // normalizações
+        if ($has('menu'))   { $data['menu']   = isset($data['menu']) ? (int)$data['menu'] : 0; }
+        if ($has('phone'))  { $data['phone']  = $data['phone']  ?? ''; }
+        if ($has('status')) { $data['status'] = $data['status'] ?? ''; }
+        if ($has('address')){ $data['address']= $data['address']?? ''; }
+
+        // cidade (ID)
+        $data['sid'] = (int)$sid;
+        if ($has('city')) { $data['city'] = (int)$sid; } // legado
+
+        // upload opcional
+        if ($request->hasFile('image') && $request->file('image')->isValid() && $has('image')) {
             $ext     = strtolower($request->file('image')->getClientOriginalExtension() ?: 'jpg');
             $baseDir = 'businesses';
             $name    = Str::random(40).'.'.$ext;
             $request->file('image')->storeAs($baseDir, $name, 'public');
-            if (Schema::hasColumn('business', 'image')) {
-                $data['image'] = $baseDir.'/'.$name;
-            }
+            $data['image'] = $baseDir.'/'.$name;
         }
 
-        // Insere e pega o ID (PK é biz_id)
-        $id = DB::table('business')->insertGetId([
-            'business_name' => $data['business_name'],
-            'description'   => $data['description'] ?? null,
-            'cid'           => (int)$data['cid'],
-            'sid'           => (int)$data['sid'],
-            // opcionais/legado
-            'menu'          => $data['menu'] ?? 0,
-            'phone'         => $data['phone'] ?? '',
-            'address'       => $data['address'] ?? '',
-            'status'        => $data['status'] ?? '',
-            'city'          => $data['city'] ?? null,
-            'image'         => $data['image'] ?? null,
-        ], 'biz_id');
+        // insert só com colunas existentes
+        $insert = [];
+        if ($has('business_name')) $insert['business_name'] = $data['business_name'];
+        if ($has('description'))   $insert['description']   = $data['description'] ?? null;
+        if ($has('cid'))           $insert['cid']           = (int)$data['cid'];
+        if ($has('sid'))           $insert['sid']           = (int)$data['sid'];
+        if ($has('menu'))          $insert['menu']          = $data['menu'] ?? 0;
+        if ($has('phone'))         $insert['phone']         = $data['phone'] ?? '';
+        if ($has('address'))       $insert['address']       = $data['address'] ?? '';
+        if ($has('status'))        $insert['status']        = $data['status'] ?? '';
+        if ($has('city'))          $insert['city']          = $data['city'] ?? null;
+        if ($has('image'))         $insert['image']         = $data['image'] ?? null;
+        if ($has('created_at') && !isset($insert['created_at'])) $insert['created_at'] = now();
+        if ($has('updated_at') && !isset($insert['updated_at'])) $insert['updated_at'] = now();
+
+        $id = DB::table('business')->insertGetId($insert, 'biz_id');
 
         return redirect()
             ->route('admin.businesses.edit', ['business' => $id])
             ->with('success', 'Negócio cadastrado com sucesso.');
     }
 
+    /** Editar — passa nomes padronizados para a view */
     public function edit(int $id)
     {
-        $row = DB::table('business')->where('biz_id', $id)->first();
-        abort_if(!$row, 404, 'Negócio não encontrado.');
+        $item = DB::table('business')->where('biz_id', $id)->first();
+        abort_if(!$item, 404, 'Negócio não encontrado.');
 
-        $cats   = DB::table('category')->orderBy('category')->get();
-        $cities = DB::table('city')->orderBy('city')->get();
+        $cats = DB::table('categories')
+            ->select('cat_id', 'category')
+            ->orderBy('category')
+            ->get();
 
-        return view('admin.businesses.edit', compact('row', 'cats', 'cities'));
+        $cities = DB::table('city')
+            ->select('city_id', 'city')
+            ->orderBy('city')
+            ->get();
+
+        return view('admin.businesses.edit', compact('item', 'cats', 'cities'));
     }
 
     public function update(Request $request, int $id): RedirectResponse
     {
+        $sid = $request->input('sid', $request->input('city_id'));
+
         $data = $request->validate([
             'business_name' => ['required', 'string', 'max:255'],
             'description'   => ['nullable', 'string'],
-            'cid'           => ['required', 'integer', 'exists:category,cat_id'],
-            'sid'           => ['required', 'integer', 'exists:city,city_id'],
+            'cid'           => ['required', 'integer', 'exists:categories,cat_id'], // <-- categories
             'menu'          => ['nullable', 'integer'],
             'phone'         => ['nullable', 'string', 'max:50'],
             'address'       => ['nullable', 'string', 'max:255'],
@@ -149,34 +171,50 @@ class BusinessAdminController extends Controller
             'image'         => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
-        if (Schema::hasColumn('business', 'menu')) {
-            $data['menu'] = isset($data['menu']) ? (int)$data['menu'] : 0;
-        }
-        foreach (['phone','address','status'] as $f) {
-            if (Schema::hasColumn('business', $f)) {
-                $data[$f] = isset($data[$f]) ? (string)$data[$f] : '';
-            }
+        if (!is_numeric($sid) || !DB::table('city')->where('city_id', (int)$sid)->exists()) {
+            return back()->withErrors(['sid' => 'Cidade inválida.'])->withInput();
         }
 
         $exists = DB::table('business')->where('biz_id', $id)->exists();
         abort_unless($exists, 404, 'Negócio não encontrado.');
 
-        // Upload opcional durante edição
-        if (!empty($data['image']) && $request->hasFile('image') && $request->file('image')->isValid()) {
+        $cols = Schema::getColumnListing('business');
+        $has  = fn(string $c) => in_array($c, $cols, true);
+
+        // normalizações
+        if ($has('menu'))   { $data['menu']   = isset($data['menu']) ? (int)$data['menu'] : 0; }
+        if ($has('phone'))  { $data['phone']  = $data['phone']  ?? ''; }
+        if ($has('status')) { $data['status'] = $data['status'] ?? ''; }
+        if ($has('address')){ $data['address']= $data['address']?? ''; }
+
+        $data['sid'] = (int)$sid;
+        if ($has('city')) { $data['city'] = (int)$sid; }
+
+        // upload
+        if ($request->hasFile('image') && $request->file('image')->isValid() && $has('image')) {
             $ext     = strtolower($request->file('image')->getClientOriginalExtension() ?: 'jpg');
             $baseDir = 'businesses';
             $name    = Str::random(40).'.'.$ext;
             $request->file('image')->storeAs($baseDir, $name, 'public');
-            if (Schema::hasColumn('business', 'image')) {
-                $data['image'] = $baseDir.'/'.$name;
-            } else {
-                unset($data['image']);
-            }
+            $data['image'] = $baseDir.'/'.$name;
         } else {
-            unset($data['image']); // não substituir se não enviar
+            unset($data['image']);
         }
 
-        DB::table('business')->where('biz_id', $id)->update($data);
+        $update = [];
+        if ($has('business_name')) $update['business_name'] = $data['business_name'];
+        if ($has('description'))   $update['description']   = $data['description'] ?? null;
+        if ($has('cid'))           $update['cid']           = (int)$data['cid'];
+        if ($has('sid'))           $update['sid']           = (int)$data['sid'];
+        if ($has('menu'))          $update['menu']          = $data['menu'] ?? 0;
+        if ($has('phone'))         $update['phone']         = $data['phone'] ?? '';
+        if ($has('address'))       $update['address']       = $data['address'] ?? '';
+        if ($has('status'))        $update['status']        = $data['status'] ?? '';
+        if ($has('city'))          $update['city']          = $data['city'] ?? null;
+        if ($has('image') && isset($data['image'])) $update['image'] = $data['image'];
+        if ($has('updated_at'))    $update['updated_at']    = now();
+
+        DB::table('business')->where('biz_id', $id)->update($update);
 
         return redirect()
             ->route('admin.businesses.index')

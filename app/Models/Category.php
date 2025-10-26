@@ -6,10 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
-    protected $table = 'category'; // TABELA LEGADO
+    protected $table = 'categories';
     protected $primaryKey = 'cat_id';
-    public $timestamps = false;
 
-    protected $fillable = ['cat_name'];
+    // public $timestamps = true;
+    // protected $fillable = ['name','slug','description','parent_id','is_active'];
 }
-

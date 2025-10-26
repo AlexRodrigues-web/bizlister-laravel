@@ -1,31 +1,109 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Business;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
-    // GET /categorias
+    /**
+     * GET /categorias
+     * Mantém a listagem simples; com paginação se possível.
+     */
     public function index()
     {
-        // ordenar pela PK real
-        $categories = Category::orderBy("cat_id")->get();
-        return view("categories.index", compact("categories"));
+        try {
+            $categories = Category::orderBy('cat_id')
+                ->paginate(24)
+                ->withQueryString();
+        } catch (\Throwable $e) {
+            $categories = Category::orderBy('cat_id')->get();
+        }
+
+        return view('categories.index', compact('categories'));
     }
 
-    // GET /categoria/{id}-{slug?}
-    public function show($id)
+    /**
+     * GET /categoria/{id}-{slug?}
+     * Mostra os negócios da categoria com busca e ordenação usadas pela sua view.
+     */
+    public function show($id, ?string $slug = null, Request $request)
     {
-        // busca pela PK real
-        $category = Category::where("cat_id", $id)->firstOrFail();
+        // Busca pela PK real (legado)
+        $category = Category::where('cat_id', $id)->firstOrFail();
 
-        // lista negÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³cios pela FK cid
-        $businesses = Business::where("cid", $category->cat_id)
-            ->orderBy("biz_id")
-            ->paginate(20);
+        // Slug canônico (evita páginas “cruas” por URL inconsistente)
+        $rawName = $category->category
+            ?? $category->name
+            ?? $category->label
+            ?? $category->cat_name
+            ?? $category->category_name
+            ?? "categoria-{$category->cat_id}";
 
-        return view("categories.show", compact("category", "businesses"));
+        $expectedSlug = Str::slug((string) $rawName);
+        if ($expectedSlug === '') {
+            $expectedSlug = (string) $category->cat_id;
+        }
+
+        if ($slug !== $expectedSlug) {
+            return redirect()
+                ->route('categories.show', ['id' => $category->cat_id, 'slug' => $expectedSlug])
+                ->setStatusCode(301);
+        }
+
+        // Filtros vindos da UI (sua view já manda ?q=&ord=)
+        $q   = trim((string) $request->query('q', ''));
+        $ord = trim((string) $request->query('ord', ''));
+
+        // Base: pela FK cid
+        $query = Business::where('cid', $category->cat_id);
+
+        if ($q !== '') {
+            $query->where(function ($w) use ($q) {
+                $w->where('business_name', 'LIKE', "%{$q}%")
+                  ->orWhere('description', 'LIKE', "%{$q}%");
+            });
+        }
+
+        // Ordenação compatível com a sua view
+        switch ($ord) {
+            case 'recentes':
+                // Se não há created_at no legado, usar biz_id desc como proxy de "mais recente"
+                $query->orderByDesc('biz_id');
+                break;
+
+            case 'nome_az':
+                $query->orderBy('business_name', 'asc');
+                break;
+
+            case 'nome_za':
+                $query->orderBy('business_name', 'desc');
+                break;
+
+            default:
+                // Ordenação padrão estável
+                $query->orderBy('business_name', 'asc');
+                break;
+        }
+
+        // Paginação com preservação da query-string
+        try {
+            $businesses = $query->paginate(12)->withQueryString();
+        } catch (\Throwable $e) {
+            $businesses = $query->get();
+        }
+
+        $pageTitle = "Categoria: " . (string) $rawName;
+
+        return view('categories.show', compact(
+            'category',
+            'businesses',
+            'q',
+            'ord',
+            'pageTitle'
+        ));
     }
 }

@@ -1,90 +1,54 @@
-﻿<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+<!doctype html>
+<html lang="{{ str_replace('_','-', app()->getLocale() ?? 'pt-BR') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="color-scheme" content="light">
+  <title>@yield('title', $title ?? config('app.name'))</title>
 
-    <title>{{ config('app.name', 'BizLister') }}</title>
+  {{-- CSS principal (mantido) --}}
+  <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
 
-    <!-- Fonts -->
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap">
+  {{-- Estilos pontuais: mantém visual atual e dá um polish leve --}}
+  <style>
+    :root { --container-bg: #f8fafc; }
+    body { background: var(--container-bg); }
+    .navbar-brand { font-weight: 700; letter-spacing: -.01em; }
+    .card-list .card + .card { margin-top: .75rem; }
 
-    <!-- CSS/JS (Laravel Mix com fallback para asset()) -->
-    @php($hasManifest = file_exists(public_path('mix-manifest.json')))
-    @if ($hasManifest)
-      <link rel="stylesheet" href="{{ asset(mix('css/app.css')) }}">
-      <script src="{{ asset(mix('js/app.js')) }}" defer></script>
-    @else
-      <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-      <script src="{{ asset('js/app.js') }}" defer></script>
-    @endif
+    /* A11y: link "pular para conteúdo" visível ao focar */
+    .skip-link {
+      position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden;
+    }
+    .skip-link:focus {
+      left: 1rem; top: 1rem; width: auto; height: auto; z-index: 1030;
+      background: #0d6efd; color: #fff; padding: .5rem .75rem; border-radius: .5rem;
+      text-decoration: none; box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
+    }
 
-    <!-- TW_CDN (dev only) -->
-    <script src="https://cdn.tailwindcss.com"></script><!--TW_CDN_MARK=v1-->
-  </head>
+    /* Footer mais elegante, mantendo simplicidade */
+    footer { background: #fff; }
+  </style>
+  @stack('styles')
+</head>
+<body>
+<a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
 
-  <body class="font-sans antialiased">
-@includeIf('partials._public_nav')
-{{-- ADMIN_RIBBON_MARK --}}
-@if (request()->is('admin*'))
-  <div class="bg-amber-50 border-b border-amber-200">
-    <div class="mx-auto max-w-6xl px-4 md:px-6 py-2 flex items-center justify-between">
-      <div class="text-sm text-amber-900/80">
-        VocÃƒÂª estÃƒÂ¡ no <strong>Admin</strong>.
-      </div>
-      <a href="{{ route('dashboard', [], false) ?? url('/') }}"
-         class="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm hover:bg-amber-100">
-        Ã¢â€ Â Dashboard
-      </a>
-    </div>
+@include('layouts.partials.topnav')
+
+<main id="conteudo" class="container py-4">
+  @include('partials.alerts')
+  @yield('content')
+</main>
+
+<footer class="border-top py-3">
+  <div class="container text-muted small">
+    &copy; {{ date('Y') }} {{ config('app.name') }}
   </div>
-@endif
- <!--LAYOUT_APP_MARK=v1-->
-    <div class="min-h-screen bg-gray-100">
+</footer>
 
-      @include('layouts.navigation')
-
-      {{-- Header opcional: sÃƒÆ’Ã‚Â³ renderiza se a view definir section("header") --}}
-      @hasSection('header')
-        <header class="bg-white shadow">
-          <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            @yield('header')
-          </div>
-        </header>
-      @endif
-
-      <!-- Page Content -->
-      <main>
-        {{-- Views clÃƒÆ’Ã‚Â¡ssicas --}}
-        @auth
-          <div class="max-w-6xl mx-auto px-4 mt-3 mb-4">
-            <div class="flex items-center justify-end gap-3">
-              <span class="text-sm text-slate-600">
-                {{ auth()->user()->username ?? auth()->user()->name ?? auth()->user()->email }}
-              </span>
-              <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit"
-                        class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200">
-                  Sair
-                </button>
-              </form>
-            </div>
-          </div>
-        @endauth
-
-        @yield('content')
-
-        {{-- Componentes tipo <x-app-layout> --}}
-        {{ $slot ?? '' }}
-      </main>
-    </div>
-  @stack('scripts')
-
+<script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+@stack('scripts')
 </body>
 </html>
-
-
-

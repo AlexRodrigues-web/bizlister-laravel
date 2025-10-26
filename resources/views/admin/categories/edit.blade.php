@@ -1,46 +1,137 @@
 @extends('layouts.admin')
 
+@section('title', ($displayName ?? null) ? 'Editar Categoria – '.$displayName : 'Editar Categoria')
+
 @section('content')
 @include('admin._back_public')
 
 @php
-  // Normaliza o registro vindo do controller: $row OU $category OU $cat
-  $row = $row ?? $category ?? $cat ?? null;
+    // Normaliza o registro que vem do controller
+    $rec = $category ?? ($row ?? ($cat ?? ($item ?? null)));
 
-  // Tenta resolver as colunas de nome comuns: category / cat_name / name
-  $nameValue = old('category',
-                old('cat_name',
-                  old('name',
-                    $row->category
-                      ?? ($row->cat_name ?? ($row->name ?? ''))
-                  )));
+    // Helper para acessar como objeto/array
+    $get = function($k) use ($rec) {
+        return is_object($rec) ? ($rec->{$k} ?? null)
+             : (is_array($rec) ? ($rec[$k] ?? null) : null);
+    };
+
+    // ID da categoria (mantemos para rotas)
+    $id = $get('cat_id') ?? $get('id');
+
+    // Nome “visível” (prioridade: category -> cat_name -> name se não for numérico tipo "-3")
+    $candidate = $get('category') ?? $get('cat_name');
+    if (is_null($candidate)) {
+        $nm = $get('name');
+        if (is_string($nm) && trim($nm) !== '' && !preg_match('/^-?\d+$/', trim($nm))) {
+            $candidate = $nm;
+        }
+    }
+    $displayName = $candidate ?? '';
+
+    // Valor do input (preserva old)
+    $nameValue = old('category', $displayName);
+
+    // Título deve exibir o NOME, não o ID
+    $pageTitle = $displayName !== '' ? "Editar Categoria – {$displayName}" : 'Editar Categoria';
 @endphp
 
-<div class="max-w-lg mx-auto p-6">
-  <h1 class="text-2xl font-bold mb-4">
-    Editar Categoria @if($row && isset($row->cat_id)) #{{ $row->cat_id }} @endif
-  </h1>
+<div class="mx-auto max-w-3xl p-6">
 
-  <form method="post"
-        action="{{ route('admin.categories.update', ['category' => $row->cat_id ?? ($row->id ?? request()->route('category'))]) }}"
-        class="space-y-4">
-    @csrf
-    @method('PUT')
+  {{-- Breadcrumbs / Ações rápidas --}}
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <nav class="text-sm text-slate-500" aria-label="breadcrumb">
+      <a href="{{ route('admin.dashboard') }}" class="hover:underline">Painel</a>
+      <span class="mx-2 opacity-60">/</span>
+      <a href="{{ route('admin.categories.index') }}" class="hover:underline">Categorias</a>
+      <span class="mx-2 opacity-60">/</span>
+      <span class="text-slate-700 font-medium">{{ $displayName !== '' ? $displayName : 'Editar' }}</span>
+    </nav>
 
+    <div class="flex items-center gap-2">
+      <a href="{{ route('admin.categories.index') }}"
+         class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+        <span aria-hidden="true">←</span> Voltar
+      </a>
+    </div>
+  </div>
+
+  {{-- Cabeçalho da página --}}
+  <div class="mb-5 flex items-start justify-between gap-3">
     <div>
-      <label class="block text-sm mb-1">Nome</label>
-      <input name="category"
-             value="{{ $nameValue }}"
-             class="border rounded px-3 py-2 w-full">
-      @error('category')
-        <div class="text-red-600 text-sm">{{ $message }}</div>
-      @enderror
+      <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800">
+        {{ $pageTitle }}
+      </h1>
+      @if($id)
+        <div class="mt-1 text-xs text-slate-500">
+          ID interno: <span class="inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5">#{{ $id }}</span>
+        </div>
+      @endif
     </div>
+  </div>
 
-    <div class="flex gap-2">
-      <a href="{{ route('admin.categories.index') }}" class="px-4 py-2 border rounded">Cancelar</a>
-      <button class="px-4 py-2 border rounded bg-gray-100">Salvar</button>
+  {{-- Mensagens de erro --}}
+  @if ($errors->any())
+    <div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-red-800">
+      <div class="font-semibold mb-1">Corrija os erros abaixo:</div>
+      <ul class="list-disc pl-5">
+        @foreach ($errors->all() as $e)
+          <li>{{ $e }}</li>
+        @endforeach
+      </ul>
     </div>
-  </form>
+  @endif
+
+  {{-- Flash de sucesso/status --}}
+  @if (session('success') || session('status'))
+    <div class="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-green-800">
+      {{ session('success') ?? session('status') }}
+    </div>
+  @endif
+
+  {{-- Card do formulário --}}
+  <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <form
+      method="POST"
+      action="{{ route('admin.categories.update', ['category' => $id ?? request()->route('category')]) }}"
+      class="space-y-6"
+      novalidate
+    >
+      @csrf
+      @method('PUT')
+
+      {{-- Campo: Nome (salvamos em "category") --}}
+      <div>
+        <label for="category" class="block text-sm font-medium text-slate-700">Nome</label>
+        <input
+          id="category"
+          name="category"
+          type="text"
+          value="{{ $nameValue }}"
+          placeholder="Ex.: Restaurantes"
+          class="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+          required
+          autocomplete="off"
+        >
+        <p class="mt-1 text-xs text-slate-500">Este é o nome que aparece no site.</p>
+        @error('category')
+          <div class="mt-1 text-red-600 text-sm">{{ $message }}</div>
+        @enderror
+      </div>
+
+      <div class="pt-2 flex items-center gap-3">
+        <button
+          type="submit"
+          class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+        >
+          Salvar
+        </button>
+
+        <a href="{{ route('admin.categories.index') }}"
+           class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+          Cancelar
+        </a>
+      </div>
+    </form>
+  </div>
 </div>
 @endsection

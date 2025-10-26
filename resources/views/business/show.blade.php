@@ -1,180 +1,371 @@
+{{-- resources/views/business/show.blade.php --}}
 @extends('layouts.app')
 
-@section('content')
-<div class="mx-auto w-full max-w-5xl px-4 py-8">
+@section('title', $biz->business_name ?? 'Negócio')
 
-  {{-- STATUS / FLASH --}}
+@section('content')
+@php
+  // Normaliza a instância do negócio
+  $biz = $biz ?? ($business ?? ($item ?? ($company ?? null)));
+
+  // Helper para extrair strings de objetos/arrays
+  $safe = function($v, $keys = []) {
+      if (is_string($v)) return trim($v);
+      if (is_object($v) || is_array($v)) {
+          foreach ($keys as $k) {
+              $val = is_object($v) ? ($v->{$k} ?? null) : ($v[$k] ?? null);
+              if (is_string($val) && trim($val) !== '') return trim($val);
+          }
+      }
+      return '';
+  };
+
+  // Categoria (apenas string)
+  $catLabel = '';
+  if (isset($category)) {
+      $catLabel = $safe($category, ['category','name','label','cat_name','category_name']);
+  }
+  if ($catLabel === '' && $biz) {
+      $catLabel = $biz->category_name
+                 ?? $biz->cat_name
+                 ?? $safe(($biz->category ?? null), ['category','name','label','cat_name','category_name'])
+                 ?? '';
+  }
+  if ($catLabel === '' && $biz) { $catLabel = (string)($biz->cid ?? ''); }
+
+  // Cidade (apenas string)
+  $cityLabel = '';
+  if (isset($city)) {
+      $cityLabel = $safe($city, ['city','name','label']);
+  }
+  if ($cityLabel === '' && $biz) {
+      $cityLabel = $biz->city_name
+                 ?? $biz->cidade
+                 ?? $safe(($biz->city ?? null), ['city','name','label'])
+                 ?? '';
+  }
+  if ($cityLabel === '' && $biz) { $cityLabel = (string)($biz->city ?? ''); }
+
+  // ===== IMAGENS =====
+  use Illuminate\Support\Facades\Storage;
+
+  $heroImg = null;
+  if (!empty($biz->image_lg) && Storage::disk('public')->exists($biz->image_lg)) {
+      $heroImg = asset('storage/'.$biz->image_lg);
+  } elseif (!empty($biz->image) && Storage::disk('public')->exists($biz->image)) {
+      $heroImg = asset('storage/'.$biz->image);
+  } else {
+      $heroImg = asset('images/placeholder-1600x600.png');
+  }
+
+  $sideImg = null;
+  if (!empty($biz->image) && Storage::disk('public')->exists($biz->image)) {
+      $sideImg = asset('storage/'.$biz->image);
+  } elseif (!empty($biz->image_lg) && Storage::disk('public')->exists($biz->image_lg)) {
+      $sideImg = asset('storage/'.$biz->image_lg);
+  } else {
+      $sideImg = asset('images/placeholder-800x600.png');
+  }
+
+  // ===== COMPARTILHAMENTO / BOOKMARK =====
+  $shareUrl   = urlencode(url()->current());
+  $shareTitle = urlencode((string)($biz->business_name ?? config('app.name')));
+  $shareImg   = urlencode($heroImg);
+
+  // Contador de bookmarks (se existir relação/atributo, senão 0)
+  $bookmarkCount = 0;
+  try {
+      if (method_exists($biz, 'bookmarks')) {
+          $bookmarkCount = (int) $biz->bookmarks()->count();
+      } elseif (isset($biz->bookmarks_count)) {
+          $bookmarkCount = (int) $biz->bookmarks_count;
+      }
+  } catch (\Throwable $e) {
+      $bookmarkCount = 0;
+  }
+@endphp
+
+<div class="container py-4">
+
+  {{-- Flash --}}
   @if (session('success') || session('status'))
-    <div class="mb-6">
-      <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-800">
-        {{ session('success') ?? session('status') }}
-      </div>
+    <div class="alert alert-success">
+      {{ session('success') ?? session('status') }}
     </div>
   @endif
 
-  {{-- CABEÇALHO --}}
-  <header class="mb-6">
-    <h1 class="text-3xl font-bold tracking-tight text-slate-900">
-      {{ $biz->business_name }}
-    </h1>
+  {{-- Breadcrumb --}}
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{{ url('/') }}">Início</a></li>
+      <li class="breadcrumb-item"><a href="{{ route('cities.index') }}">Cidades</a></li>
+      @if($cityLabel)<li class="breadcrumb-item active" aria-current="page">{{ $cityLabel }}</li>@endif
+    </ol>
+  </nav>
+
+  {{-- Título + badges --}}
+  <header class="mb-3">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+      <h1 class="h3 mb-0 text-truncate">{{ $biz->business_name }}</h1>
+      <div class="d-flex flex-wrap gap-2">
+        @if($catLabel)
+          <span class="badge text-bg-light border">{{ $catLabel }}</span>
+        @endif
+        @if($cityLabel)
+          <span class="badge text-bg-light border">{{ $cityLabel }}</span>
+        @endif
+      </div>
+    </div>
   </header>
 
-  {{-- HERO / INTRO: ABOUT + GALLERY (SEUS PARCIAIS) --}}
-  <section class="mb-6 grid gap-6 lg:grid-cols-3">
-    <div class="lg:col-span-2 space-y-6">
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        @include('business._about',   ['business' => ($business ?? ($biz ?? ($item ?? ($company ?? null))))])
+  {{-- ===== Imagem HERO (imagem #1) ===== --}}
+  <div class="card overflow-hidden mb-3">
+    <div class="ratio ratio-21x9 bg-light">
+      <img src="{{ $heroImg }}" alt="Imagem principal de {{ $biz->business_name }}" class="img-fluid w-100 h-100" style="object-fit:cover;">
+    </div>
+  </div>
+
+  {{-- Conteúdo: coluna principal + sidebar --}}
+  <div class="row g-3 mb-3">
+    <div class="col-lg-8 d-flex flex-column gap-3">
+
+      {{-- Sobre --}}
+      <div class="card">
+        <div class="card-header bg-white"><strong>Sobre</strong></div>
+        <div class="card-body">
+          @include('business._about', ['business' => ($business ?? ($biz ?? ($item ?? ($company ?? null))))])
+        </div>
       </div>
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        @include('business._gallery', ['business' => ($business ?? ($biz ?? ($item ?? ($company ?? null))))])
+
+      {{-- Galeria --}}
+      <div class="card">
+        <div class="card-header bg-white"><strong>Galeria</strong></div>
+        <div class="card-body">
+          @include('business._gallery', ['business' => ($business ?? ($biz ?? ($item ?? ($company ?? null))))])
+        </div>
+      </div>
+
+      {{-- Detalhes --}}
+      <div class="card">
+        <div class="card-header bg-white"><strong>Detalhes</strong></div>
+        <div class="card-body">
+          <div class="row g-3 small">
+            <div class="col-sm-4">
+              <div class="text-muted">Categoria</div>
+              <div class="fw-medium">{{ $catLabel }}</div>
+            </div>
+            <div class="col-sm-4">
+              <div class="text-muted">Cidade</div>
+              <div class="fw-medium">{{ $cityLabel }}</div>
+            </div>
+            <div class="col-12">
+              <div class="text-muted">Descrição</div>
+              <div class="mt-1">{!! nl2br(e($biz->description)) !!}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {{-- Voltar --}}
+      <div class="d-flex gap-2">
+        <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">Voltar</a>
       </div>
     </div>
 
-    {{-- CARD LATERAL: IMAGEM DESTACADA + CONTATOS (sem remover nada seu) --}}
-    <aside class="space-y-6">
-      {{-- IMAGEM DESTACADA (SEU BLOCO) --}}
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        @php
-            use Illuminate\Support\Facades\Storage;
-            $imgPath = null;
-            if (!empty($biz->image_lg) && Storage::disk('public')->exists($biz->image_lg)) {
-                $imgPath = 'storage/'.$biz->image_lg;
-            } elseif (!empty($biz->image) && Storage::disk('public')->exists($biz->image)) {
-                $imgPath = 'storage/'.$biz->image;
-            } else {
-                $imgPath = 'images/placeholder-800x600.png';
-            }
-        @endphp
+    {{-- ===== Sidebar (imagem #2 + contatos + compartilhar) ===== --}}
+    <aside class="col-lg-4">
+      <div class="sticky-top" style="top: 76px;">
+        <div class="d-flex flex-column gap-3">
 
-        <div class="aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100">
-          <img src="{{ asset($imgPath) }}" alt="{{ $biz->business_name }}" class="h-full w-full object-cover">
-        </div>
-      </div>
-
-      {{-- CONTATOS (SEU BLOCO) --}}
-      @php
-          $addr1   = trim((string)($biz->address_1 ?? ''));
-          $addr2   = trim((string)($biz->address_2 ?? ''));
-          $phone   = trim((string)($biz->phone ?? ''));
-          $website = trim((string)($biz->website ?? ''));
-          $email   = trim((string)($biz->email ?? ''));
-
-          $hasContacts = $addr1 || $addr2 || $phone || $website || $email;
-
-          $telHref = preg_replace('/\D+/', '', $phone);
-          $websiteHref = $website;
-          if ($website && !preg_match('/^https?:\/\//i', $websiteHref)) {
-              $websiteHref = 'http://' . $websiteHref;
-          }
-      @endphp
-
-      @if ($hasContacts)
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 class="mb-3 text-lg font-semibold text-slate-900">Contatos</h2>
-          <div class="space-y-3 text-sm leading-6 text-slate-700">
-            @if ($addr1 || $addr2)
-              <div>
-                <div class="font-semibold text-slate-800">Endereço</div>
-                <div>{{ $addr1 }}@if($addr1 && $addr2), @endif{{ $addr2 }}</div>
-              </div>
-            @endif
-            @if ($phone)
-              <div>
-                <div class="font-semibold text-slate-800">Telefone</div>
-                <a href="tel:{{ $telHref }}" class="underline">{{ $phone }}</a>
-              </div>
-            @endif
-            @if ($website)
-              <div>
-                <div class="font-semibold text-slate-800">Website</div>
-                <a href="{{ $websiteHref }}" target="_blank" rel="nofollow noopener" class="underline break-all">
-                  {{ $website }}
-                </a>
-              </div>
-            @endif
-            @if ($email)
-              <div>
-                <div class="font-semibold text-slate-800">E-mail</div>
-                <a href="mailto:{{ e($email) }}" class="underline break-all">{{ $email }}</a>
-              </div>
-            @endif
+          {{-- Imagem destacada (secundária) --}}
+          <div class="card overflow-hidden">
+            <div class="ratio ratio-4x3 bg-light">
+              <img src="{{ $sideImg }}" alt="{{ $biz->business_name }}" class="img-fluid w-100 h-100" style="object-fit:cover;">
+            </div>
           </div>
+
+          {{-- Contatos --}}
+          @php
+            $addr1   = trim((string)($biz->address_1 ?? ''));
+            $addr2   = trim((string)($biz->address_2 ?? ''));
+            $phone   = trim((string)($biz->phone ?? ''));
+            $website = trim((string)($biz->website ?? ''));
+            $email   = trim((string)($biz->email ?? ''));
+
+            $hasContacts = $addr1 || $addr2 || $phone || $website || $email;
+
+            $telHref = preg_replace('/\D+/', '', $phone);
+            $websiteHref = $website && !preg_match('/^https?:\/\//i', $website) ? ('http://'.$website) : $website;
+          @endphp
+
+          @if ($hasContacts)
+            <div class="card">
+              <div class="card-header bg-white"><strong>Contatos</strong></div>
+              <div class="card-body small">
+                @if ($addr1 || $addr2)
+                  <div class="mb-2">
+                    <div class="fw-semibold text-muted">Endereço</div>
+                    <div>{{ $addr1 }}@if($addr1 && $addr2), @endif{{ $addr2 }}</div>
+                  </div>
+                @endif
+
+                @if ($phone)
+                  <div class="mb-2">
+                    <div class="fw-semibold text-muted">Telefone</div>
+                    <a href="tel:{{ $telHref }}" class="link-underline">{{ $phone }}</a>
+                  </div>
+                @endif
+
+                @if ($website)
+                  <div class="mb-2">
+                    <div class="fw-semibold text-muted">Website</div>
+                    <a href="{{ $websiteHref }}" target="_blank" rel="nofollow noopener" class="text-break">
+                      {{ $website }}
+                    </a>
+                  </div>
+                @endif
+
+                @if ($email)
+                  <div class="mb-2">
+                    <div class="fw-semibold text-muted">E-mail</div>
+                    <a href="mailto:{{ e($email) }}" class="text-break">{{ $email }}</a>
+                  </div>
+                @endif
+              </div>
+            </div>
+          @endif
+
+          {{-- Compartilhar / Bookmark --}}
+          <div class="card">
+            <div class="card-header bg-white"><strong>Compartilhar</strong></div>
+            <div class="card-body small d-flex flex-wrap gap-2">
+              {{-- Facebook --}}
+              <a class="btn btn-sm btn-outline-primary"
+                 href="https://www.facebook.com/sharer/sharer.php?u={{ $shareUrl }}"
+                 onclick="window.open(this.href,'fbshare','width=640,height=480'); return false;"
+                 aria-label="Compartilhar no Facebook">
+                Facebook
+              </a>
+
+              {{-- Twitter / X --}}
+              <a class="btn btn-sm btn-outline-secondary"
+                 href="https://twitter.com/intent/tweet?url={{ $shareUrl }}&text={{ $shareTitle }}"
+                 onclick="window.open(this.href,'twshare','width=640,height=480'); return false;"
+                 aria-label="Compartilhar no Twitter">
+                Twitter
+              </a>
+
+              {{-- Pinterest --}}
+              <a class="btn btn-sm btn-outline-danger"
+                 href="https://pinterest.com/pin/create/button/?url={{ $shareUrl }}&media={{ $shareImg }}&description={{ $shareTitle }}"
+                 onclick="window.open(this.href,'pinshare','width=740,height=640'); return false;"
+                 aria-label="Compartilhar no Pinterest">
+                Pinterest
+              </a>
+
+              {{-- Bookmark (usa rota existente se houver) --}}
+              @auth
+                @if (Route::has('business.bookmark') && !empty($biz->biz_id))
+                  <form method="POST" action="{{ route('business.bookmark', $biz->biz_id) }}" class="d-inline">
+                    @csrf
+                    <button class="btn btn-sm btn-outline-dark" type="submit" title="Salvar este negócio">
+                      Bookmark ({{ $bookmarkCount }})
+                    </button>
+                  </form>
+                @else
+                  <span class="btn btn-sm btn-outline-dark disabled" title="Indisponível">
+                    Bookmark ({{ $bookmarkCount }})
+                  </span>
+                @endif
+              @else
+                <a href="{{ route('login') }}" class="btn btn-sm btn-outline-dark" title="Entrar para salvar">
+                  Bookmark ({{ $bookmarkCount }})
+                </a>
+              @endauth
+            </div>
+          </div>
+
         </div>
-      @endif
+      </div>
     </aside>
-  </section>
-
-  {{-- DETALHES (Categoria/Cidade/Descrição) — SEU BLOCO EM CARD PADRÃO --}}
-  @php
-    $catLabel = isset($category)
-      ? (is_object($category)
-          ? ($category->category ?? $category->cat_name ?? $category->label ?? (string)($biz->cid))
-          : (string)$category)
-      : (string)($biz->cid);
-
-    $cityLabel = isset($city)
-      ? (is_object($city)
-          ? ($city->city ?? $city->label ?? (string)($biz->city))
-          : (string)$city)
-      : (string)($biz->city);
-  @endphp
-
-  <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 class="mb-3 text-lg font-semibold text-slate-900">Detalhes</h2>
-    <dl class="grid gap-4 sm:grid-cols-3 text-slate-800">
-      <div>
-        <dt class="text-sm text-slate-500">Categoria</dt>
-        <dd class="font-medium">{{ $catLabel }}</dd>
-      </div>
-      <div>
-        <dt class="text-sm text-slate-500">Cidade</dt>
-        <dd class="font-medium">{{ $cityLabel }}</dd>
-      </div>
-      <div class="sm:col-span-3">
-        <dt class="text-sm text-slate-500">Descrição</dt>
-        <dd class="mt-1 whitespace-pre-line leading-relaxed">{!! nl2br(e($biz->description)) !!}</dd>
-      </div>
-    </dl>
-  </section>
-
-  {{-- CTA VOLTAR --}}
-  <div class="mb-8">
-    <a href="{{ url()->previous() }}"
-       class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-slate-800 shadow-sm hover:bg-slate-50">
-      Voltar
-    </a>
   </div>
 
-  {{-- REVIEWS + FORM + MAPA (SEU BLOCO NOVO) --}}
+  {{-- Avaliações + Form + Mapa --}}
   @php
     $__biz = $business ?? ($biz ?? ($item ?? ($company ?? null)));
+    $reviews = collect();
+    $avg = 0.0;
+    $cnt = 0;
+    if ($__biz && method_exists($__biz, 'reviews')) {
+      $reviews = $__biz->reviews()->where('is_approved', true)->get();
+      $avg = round((float) $reviews->avg('rating'), 1);
+      $cnt = $reviews->count();
+    }
   @endphp
 
-  @if($__biz)
-    @php
-      $avg = round($__biz->reviews()->where('is_approved', true)->avg('rating') ?: 0, 1);
-      $cnt = $__biz->reviews()->where('is_approved', true)->count();
-    @endphp
-
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <header class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  @if ($__biz)
+    <div class="card">
+      <div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2">
         <div>
-          <h2 class="text-xl font-semibold text-slate-900">Avaliações</h2>
-          <p class="text-sm text-slate-500">Nota média: {{ $avg }} / 5 ({{ $cnt }} {{ $cnt == 1 ? 'avaliação' : 'avaliações' }})</p>
+          <strong>Avaliações</strong>
+          <div class="text-muted small">
+            Nota média: {{ number_format($avg,1) }} / 5 ({{ $cnt }} {{ $cnt == 1 ? 'avaliação' : 'avaliações' }})
+          </div>
         </div>
-        <div class="shrink-0"><x-stars :value="$avg" size="lg" /></div>
-      </header>
+        <div class="text-nowrap small">
+          @for ($i = 1; $i <= 5; $i++)
+            @php $full = $i <= floor($avg); @endphp
+            <span class="{{ $full ? 'text-warning' : 'text-secondary' }}">★</span>
+          @endfor
+        </div>
+      </div>
+      <div class="card-body">
 
-      @include('reviews._list', ['business' => $__biz])
+        {{-- Lista de reviews --}}
+        @if (View::exists('reviews._list'))
+          @include('reviews._list', ['business' => $__biz, 'reviews' => $reviews])
+        @else
+          @if ($reviews->isEmpty())
+            <div class="alert alert-light border small">Ainda não há avaliações aprovadas.</div>
+          @else
+            <div class="list-group mb-3">
+              @foreach ($reviews as $rv)
+                @php
+                  $body  = trim((string)($rv->body ?? $rv->comment ?? ''));
+                  $title = trim((string)($rv->title ?? ''));
+                @endphp
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between">
+                    <strong class="small">Nota: {{ $rv->rating }}/5</strong>
+                    <span class="text-muted small">{{ optional($rv->created_at)->format('d/m/Y H:i') ?? '' }}</span>
+                  </div>
+                  @if($title)<div class="mt-1 fw-semibold small">{{ $title }}</div>@endif
+                  @if($body)<div class="small mt-1">{{ $body }}</div>@endif
+                </div>
+              @endforeach
+            </div>
+          @endif
+        @endif
 
-      <div class="my-6 border-t border-slate-200"></div>
+        <hr class="my-4">
 
-      @include('reviews._form', ['business' => $__biz])
+        {{-- Form de review --}}
+        @if (View::exists('reviews._form'))
+          @include('reviews._form', ['business' => $__biz])
+        @else
+          <div class="alert alert-info small mb-0">Formulário de avaliação indisponível.</div>
+        @endif
 
-      <div class="my-6 border-t border-slate-200"></div>
+        <hr class="my-4">
 
-      @include('business._map', ['business' => $__biz])
-    </section>
+        {{-- Mapa --}}
+        @if (View::exists('business._map'))
+          @include('business._map', ['business' => $__biz])
+        @else
+          <div class="alert alert-light border small mb-0">Mapa indisponível.</div>
+        @endif
+      </div>
+    </div>
   @endif
 </div>
 @endsection
