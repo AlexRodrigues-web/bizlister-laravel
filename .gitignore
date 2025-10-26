@@ -34,3 +34,10 @@ routes/*backup*.php
 ck*.txt
 
 *.bak
+# local-only
+public/vendor/
+public/legacy/
+_reports/
+reports/
+*.zip
+storage/framework/cache/data/
