@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Page;
 use Illuminate\View\View;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class PageController extends Controller
 {
@@ -12,11 +11,10 @@ class PageController extends Controller
     {
         $page = Page::published()
             ->where('slug', $slug)
-            ->first();
+            ->firstOrFail();
 
-        if (!$page) {
-            throw new NotFoundHttpException();
-        }
+        // Define o <title> da página (fallback para o slug “humanizado”)
+        view()->share('title', $page->title ?: ucfirst(str_replace('-', ' ', $slug)));
 
         return view('pages.show', compact('page'));
     }

@@ -20,6 +20,27 @@
       } catch (\Throwable $e) { /* silencioso */ }
   }
 
+  // ===== Subcategorias (compatível com schema novo/legado) =====
+  $__subsByCat = collect();
+  try {
+      if (\Illuminate\Support\Facades\Schema::hasTable('subcategories')) {
+          $scols   = \Illuminate\Support\Facades\Schema::getColumnListing('subcategories');
+          $catCol  = in_array('category_id',$scols,true) ? 'category_id' : null;
+          $nameCol = in_array('name',$scols,true)        ? 'name' : (in_array('title',$scols,true) ? 'title' : null);
+          $slugCol = in_array('slug',$scols,true)        ? 'slug' : null;
+
+          if ($catCol && $nameCol && $slugCol) {
+              $subs = \Illuminate\Support\Facades\DB::table('subcategories')
+                  ->selectRaw("$catCol AS category_id, $nameCol AS name, $slugCol AS slug")
+                  ->orderBy($nameCol)
+                  ->get();
+
+              // groupBy por category_id — casa com $__cats->cat_id (alias acima)
+              $__subsByCat = $subs->groupBy('category_id');
+          }
+      }
+  } catch (\Throwable $e) { /* silencioso */ }
+
   // classes de estado ativo/inativo
   $linkBase = 'inline-flex items-center rounded-md px-3 py-2 font-semibold tracking-tight';
   $active   = $linkBase.' bg-white/15';
@@ -53,19 +74,51 @@
         </ul>
       </li>
 
-      {{-- Categorias --}}
+      {{-- Categorias (com subcategorias) --}}
       <li class="bl-has-dropdown" role="none">
         <button class="bl-dropbtn" type="button" aria-haspopup="true" aria-expanded="false">
           Categorias <span class="bl-caret" aria-hidden="true">▾</span>
         </button>
         <ul class="bl-dropdown bl-dropdown-wide" role="menu" aria-label="Categorias">
           @forelse($__cats as $c)
-            @php $slug = \Illuminate\Support\Str::slug($c->label ?? ''); @endphp
-            <li role="none">
-              <a role="menuitem" href="{{ route('categories.show', [$c->cat_id, $slug]) }}">
-                {{ $c->label ?? ('Categoria #'.$c->cat_id) }}
+            @php
+              $catId   = $c->cat_id;
+              $catName = $c->label ?? ('Categoria #'.$catId);
+              $slug    = \Illuminate\Support\Str::slug($catName);
+              $subsAll = ($__subsByCat[$catId] ?? collect());
+              $subs    = $subsAll->take(6);
+            @endphp
+
+            <li role="none" class="mb-2">
+              <a role="menuitem" href="{{ route('categories.show', [$catId, $slug]) }}">
+                {{ $catName }}
               </a>
+
+              {{-- Badges de subcategorias --}}
+              @if($subs->count())
+                <div class="mt-1" aria-label="Subcategorias de {{ $catName }}">
+                  @foreach($subs as $sub)
+                    <a role="menuitem"
+                       href="{{ route('subcategories.show', $sub->slug) }}"
+                       class="bl-sub-badge"
+                       title="{{ $sub->name }}">
+                      {{ $sub->name }}
+                    </a>
+                  @endforeach
+                  @if($subsAll->count() > 6)
+                    <a role="menuitem"
+                       href="{{ route('categories.show', [$catId, $slug]) }}"
+                       class="bl-sub-badge bl-more">
+                      + ver todas
+                    </a>
+                  @endif
+                </div>
+              @endif
             </li>
+
+            @if(!$loop->last)
+              <li role="none"><hr class="dropdown-divider"></li>
+            @endif
           @empty
             <li class="bl-empty" role="none">Sem categorias</li>
           @endforelse
@@ -147,6 +200,17 @@
   .bl-linklike{background:none;border:0;padding:10px 12px;width:100%;text-align:left;border-radius:8px;font-weight:700;cursor:pointer;color:#111827}
   .bl-linklike:hover{background:#f2f2f2}
   .bl-spacer{flex:1}
+
+  /* Badges de subcategoria */
+  .bl-sub-badge{
+    display:inline-block; font-size:12px; line-height:1;
+    padding:6px 8px; margin:2px 6px 2px 0;
+    border-radius:999px; background:#f3f4f6; color:#111827;
+    text-decoration:none; font-weight:700; border:1px solid #e5e7eb;
+  }
+  .bl-sub-badge:hover{background:#e5e7eb}
+  .bl-sub-badge.bl-more{background:#eef2ff; border-color:#e0e7ff}
+
   @media (max-width: 480px){
     .bl-dropdown{position:fixed;left:16px;right:16px}
   }

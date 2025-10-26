@@ -1,3 +1,4 @@
+{{-- resources/views/admin/_sidebar.blade.php --}}
 {{-- Admin sidebar colapsável (discreto) --}}
 <div class="p-4">
 
@@ -40,6 +41,11 @@
 
         $tot = $totals ?? [];
         $fmt = fn($v) => number_format((int)($v ?? 0), 0, ',', '.');
+
+        // Rotas de configurações: preferir edit; fallback index
+        $settingsRouteName = Route::has('admin.settings.edit')
+          ? 'admin.settings.edit'
+          : (Route::has('admin.settings.index') ? 'admin.settings.index' : null);
       @endphp
 
       <nav class="space-y-1 text-sm" role="navigation" aria-label="Menu administrativo">
@@ -96,6 +102,26 @@
           @endif
         </a>
 
+        {{-- Páginas (CRUD) --}}
+        @if (Route::has('admin.pages.index'))
+          @php $active = request()->routeIs('admin.pages.*'); @endphp
+          <a href="{{ route('admin.pages.index') }}"
+             class="{{ $itemClass($active) }}"
+             @if($active) aria-current="page" @endif>
+            <span class="flex items-center">
+              <span class="{{ $iconWrap($active) }}" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm8 2H6v16h12V9h-4V4Zm-6 6h8v2H8v-2Zm0 4h8v2H8v-2Z"/>
+                </svg>
+              </span>
+              Páginas
+            </span>
+            @if(isset($tot['pages']))
+              <span class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{{ $fmt($tot['pages']) }}</span>
+            @endif
+          </a>
+        @endif
+
         {{-- Cidades --}}
         @php $active = request()->routeIs('admin.cities.*'); @endphp
         <a href="{{ route('admin.cities.index') }}"
@@ -131,6 +157,26 @@
           </span>
         </a>
 
+        {{-- Anúncios (form único) --}}
+        @if (Route::has('admin.advertisements.edit'))
+          @php $active = request()->routeIs('admin.advertisements.*'); @endphp
+          <a href="{{ route('admin.advertisements.edit') }}"
+             class="{{ $itemClass($active) }}"
+             @if($active) aria-current="page" @endif>
+            <span class="flex items-center">
+              <span class="{{ $iconWrap($active) }}" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4 4h16v4H4V4Zm0 6h16v10H4V10Zm2 2v6h12v-6H6Z"/>
+                </svg>
+              </span>
+              Anúncios
+            </span>
+            @if(isset($tot['ads']))
+              <span class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{{ $fmt($tot['ads']) }}</span>
+            @endif
+          </a>
+        @endif
+
         {{-- Usuários (se existir) --}}
         @if (Route::has('admin.users.index'))
           @php $active = request()->routeIs('admin.users.*'); @endphp
@@ -148,10 +194,10 @@
           </a>
         @endif
 
-        {{-- Configurações (se existir) --}}
-        @if (Route::has('admin.settings.index'))
+        {{-- Configurações (form único) --}}
+        @if ($settingsRouteName)
           @php $active = request()->routeIs('admin.settings.*'); @endphp
-          <a href="{{ route('admin.settings.index') }}"
+          <a href="{{ route($settingsRouteName) }}"
              class="{{ $itemClass($active) }}"
              @if($active) aria-current="page" @endif>
             <span class="flex items-center">

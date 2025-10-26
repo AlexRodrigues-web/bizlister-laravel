@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class Page extends Model
 {
@@ -24,13 +25,15 @@ class Page extends Model
         "published_at" => "datetime",
     ];
 
-    /** Escopo: somente publicadas (ativas e já publicadas) */
+    /**
+     * Escopo: somente publicadas (ativas e já publicadas)
+     */
     public function scopePublished(Builder $q): Builder
     {
         return $q->where("is_active", 1)
                  ->where(function ($q) {
                      $q->whereNull("published_at")
-                       ->orWhere("published_at", "<=", now());
+                       ->orWhere("published_at", "<=", DB::raw("NOW()"));
                  });
     }
 }

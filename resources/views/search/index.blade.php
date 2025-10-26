@@ -7,7 +7,7 @@
   @php
     use Illuminate\Support\Str;
 
-    // $items pode ser paginator ou coleÃ§Ã£o; garantimos objeto iterÃ¡vel
+    // $items pode ser paginator ou coleção; garantimos objeto iterável
     $results = $items ?? collect();
 
     // termo da busca (se houver)
@@ -44,7 +44,7 @@
     };
   @endphp
 
-  {{-- Styles de melhoria (apenas visual, nÃ£o interfere nas rotas/lÃ³gica) --}}
+  {{-- Styles de melhoria (apenas visual, não interfere nas rotas/lógica) --}}
   <style>
     .sr-hero{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(59,130,246,.06));border:1px solid rgba(0,0,0,.05);border-radius:16px;padding:18px;margin-bottom:14px}
     .sr-quiet{color:#64748b}
@@ -71,9 +71,9 @@
         <h1 class="h4 mb-1">Resultados da busca</h1>
         <p class="mb-0 sr-quiet">
           @if($q !== '')
-            Mostrando resultados para <strong>â€œ{{ e($q) }}â€</strong>.
+            Mostrando resultados para <strong>“{{ e($q) }}”</strong>.
           @else
-            Refine sua busca para encontrar negÃ³cios.
+            Refine sua busca para encontrar negócios.
           @endif
         </p>
       </div>
@@ -90,7 +90,7 @@
       @foreach($results as $b)
         @php
           $id    = $b->biz_id ?? $b->id ?? null;
-          $name  = $b->business_name ?? $b->name ?? 'NegÃ³cio';
+          $name  = $b->business_name ?? $b->name ?? 'Negócio';
           $slug  = Str::slug($name ?: 'negocio');
           $url   = $id ? route('business.show', [$id, $slug]) : 'javascript:void(0)';
 
@@ -139,7 +139,7 @@
       @endforeach
     </div>
 
-    {{-- PaginaÃ§Ã£o (preserva querystring) --}}
+    {{-- Paginação (preserva querystring) --}}
     @if(method_exists($results, 'links'))
       <div class="mt-4 d-flex justify-content-center">
         {{ $results->withQueryString()->links() }}
@@ -156,7 +156,7 @@
       @endif
       <div class="mt-3">
         <a href="{{ url()->previous() }}" class="btn btn-outline-secondary btn-sm me-2">Voltar</a>
-        <a href="{{ url('/') }}" class="btn btn-primary btn-sm">Ir para a pÃ¡gina inicial</a>
+        <a href="{{ url('/') }}" class="btn btn-primary btn-sm">Ir para a página inicial</a>
       </div>
     </div>
   @endif

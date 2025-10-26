@@ -23,12 +23,14 @@
   {{-- Avisos quando fonte de dados vier vazia (não bloqueia o envio) --}}
   @if (($categories ?? collect())->count() === 0)
     <div class="alert alert-warning small" role="status">
-      Nenhuma categoria encontrada. Verifique se a tabela <code>categories</code> existe e possui as colunas <code>cat_id</code> e <code>category</code>.
+      Nenhuma categoria encontrada. Verifique se a tabela <code>categories</code> existe e possui as colunas <code>id</code>/<code>name</code>
+      (ou os aliases legados <code>cat_id</code>/<code>category</code>/<code>category_name</code>).
     </div>
   @endif
   @if (($cities ?? collect())->count() === 0)
     <div class="alert alert-warning small" role="status">
-      Nenhuma cidade encontrada. Verifique se a tabela <code>cities</code> (ou <code>city</code>) existe e possui as colunas <code>city_id</code> e <code>city</code>/<code>name</code>.
+      Nenhuma cidade encontrada. Verifique se a tabela <code>city</code> (ou <code>cities</code>) existe e possui as colunas <code>id</code>/<code>name</code>
+      (ou os aliases legados <code>city_id</code>/<code>city</code>).
     </div>
   @endif
 
@@ -70,18 +72,39 @@
         @foreach(($categories ?? collect()) as $c)
           @php
             // Compat: aceita tanto objetos quanto stdClass/arrays do DB::table
-            $catId   = is_object($c) ? ($c->cat_id ?? $c->id ?? null) : ($c['cat_id'] ?? $c['id'] ?? null);
+            $catId   = is_object($c) ? ($c->id ?? $c->cat_id ?? null) : ($c['id'] ?? $c['cat_id'] ?? null);
             $catText = is_object($c)
-              ? ($c->label ?? $c->category_name ?? $c->category ?? $c->name ?? ($catId ? "Categoria #{$catId}" : 'Categoria'))
-              : ($c['label'] ?? $c['category_name'] ?? $c['category'] ?? $c['name'] ?? ($catId ? "Categoria #{$catId}" : 'Categoria'));
+              ? ($c->name ?? $c->category_name ?? $c->category ?? $c->label ?? ($catId ? "Categoria #{$catId}" : 'Categoria'))
+              : ($c['name'] ?? $c['category_name'] ?? $c['category'] ?? $c['label'] ?? ($catId ? "Categoria #{$catId}" : 'Categoria'));
           @endphp
           <option value="{{ $catId }}" {{ (string)old('cid') === (string)$catId ? 'selected' : '' }}>
             {{ $catText }}
           </option>
         @endforeach
       </select>
-      <div id="cidHelp" class="form-text">A lista é carregada de <code>categories</code>.</div>
+      <div id="cidHelp" class="form-text">
+        A lista é carregada de <code>categories</code>.
+      </div>
       @error('cid')
+        <div class="invalid-feedback">{{ $message }}</div>
+      @enderror
+    </div>
+
+    {{-- Subcategoria (opcional) — NOVO --}}
+    <div class="mb-3">
+      <label for="subcategory_id" class="form-label">Subcategoria</label>
+      <select
+        id="subcategory_id"
+        name="subcategory_id"
+        class="form-select @error('subcategory_id') is-invalid @enderror"
+        aria-describedby="subHelp">
+        <option value="">— (opcional) —</option>
+        {{-- opções carregadas via JS conforme a categoria --}}
+      </select>
+      <div id="subHelp" class="form-text">
+        Subcategorias são carregadas automaticamente após escolher a categoria.
+      </div>
+      @error('subcategory_id')
         <div class="invalid-feedback">{{ $message }}</div>
       @enderror
     </div>
@@ -98,17 +121,17 @@
         <option value="">Selecione...</option>
         @foreach(($cities ?? collect()) as $s)
           @php
-            $cityId   = is_object($s) ? ($s->city_id ?? $s->id ?? null) : ($s['city_id'] ?? $s['id'] ?? null);
+            $cityId   = is_object($s) ? ($s->id ?? $s->city_id ?? null) : ($s['id'] ?? $s['city_id'] ?? null);
             $cityText = is_object($s)
-              ? ($s->label ?? $s->city ?? $s->name ?? ($cityId ? "Cidade #{$cityId}" : 'Cidade'))
-              : ($s['label'] ?? $s['city'] ?? $s['name'] ?? ($cityId ? "Cidade #{$cityId}" : 'Cidade'));
+              ? ($s->name ?? $s->city ?? $s->label ?? ($cityId ? "Cidade #{$cityId}" : 'Cidade'))
+              : ($s['name'] ?? $s['city'] ?? $s['label'] ?? ($cityId ? "Cidade #{$cityId}" : 'Cidade'));
           @endphp
           <option value="{{ $cityId }}" {{ (string)old('sid') === (string)$cityId ? 'selected' : '' }}>
             {{ $cityText }}
           </option>
         @endforeach
       </select>
-      <div id="sidHelp" class="form-text">A lista é carregada de <code>cities</code> (ou <code>city</code>).</div>
+      <div id="sidHelp" class="form-text">A lista é carregada de <code>city</code>/<code>cities</code>.</div>
       @error('sid')
         <div class="invalid-feedback">{{ $message }}</div>
       @enderror
@@ -142,7 +165,7 @@
       <div class="form-text">Até 2MB. Formatos: JPG, PNG, WEBP. Use imagens na horizontal para melhor resultado.</div>
       @error('image')
         <div class="invalid-feedback">{{ $message }}</div>
-      @enderror>
+      @enderror
 
       {{-- Preview inline (aparece após escolher arquivo) --}}
       <div id="image-preview" class="mt-2 d-none">
@@ -167,9 +190,10 @@
       <input name="description">
       <input name="cid">
       <input name="sid">
+      <input name="subcategory_id">
       <input name="image">
     </template>
-    <!-- name="business_name" name="description" name="cid" name="sid" name="image" -->
+    <!-- name="business_name" name="description" name="cid" name="sid" name="subcategory_id" name="image" -->
   </form>
 </div>
 
@@ -211,6 +235,52 @@
         img.src = url;
         wrap.classList.remove('d-none');
       });
+    }
+
+    // ===== Subcategorias (AJAX) =====
+    const $cat = document.getElementById('cid');
+    const $sub = document.getElementById('subcategory_id');
+    const selectedSub = '{{ old('subcategory_id', '') }}';
+
+    async function loadSubcategories(catId) {
+      if (!$sub) return;
+      // limpa e coloca opção vazia
+      $sub.innerHTML = '';
+      const optEmpty = document.createElement('option');
+      optEmpty.value = '';
+      optEmpty.textContent = '— (opcional) —';
+      $sub.appendChild(optEmpty);
+
+      if (!catId) return;
+
+      try {
+        const res = await fetch(`/categories/${encodeURIComponent(catId)}/subcategories`, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return; // rota não disponível ou erro
+        const list = await res.json();
+        if (!Array.isArray(list)) return;
+
+        list.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.name ?? s.slug ?? `#${s.id}`;
+          if (String(selectedSub) === String(s.id)) opt.selected = true;
+          $sub.appendChild(opt);
+        });
+      } catch (e) {
+        // silencia para não travar o formulário
+        console.error('Falha ao carregar subcategorias:', e);
+      }
+    }
+
+    if ($cat) {
+      $cat.addEventListener('change', function () {
+        loadSubcategories(this.value);
+      });
+
+      // dispara carregamento inicial (caso tenha old('cid'))
+      if ($cat.value) {
+        loadSubcategories($cat.value);
+      }
     }
   })();
 </script>

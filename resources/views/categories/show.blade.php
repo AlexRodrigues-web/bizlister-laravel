@@ -16,9 +16,14 @@
     .card.hoverable:hover{transform:translateY(-2px); box-shadow:0 .5rem 1rem rgba(0,0,0,.08)}
     .badge-truncate{max-width:10rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
     .line-2{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+    .chip{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .6rem;border:1px solid rgba(0,0,0,.08);border-radius:999px;background:#fff}
+    .chip:hover{text-decoration:none;box-shadow:0 .25rem .5rem rgba(0,0,0,.06)}
   </style>
 
   @php
+    use Illuminate\Support\Str;
+    use Illuminate\Support\Facades\Storage;
+
     // === Nomes/coleções (compat com legado) ===
     $catName = $category->name
       ?? $category->cat_name
@@ -27,16 +32,25 @@
       ?? $category->category
       ?? 'Categoria';
 
+    $catId = $category->id
+      ?? $category->cat_id
+      ?? $category->cid
+      ?? null;
+
+    // lista principal (negócios)
     $list = $businesses ?? $items ?? collect();
     if (is_array($list)) $list = collect($list);
-
     $isPaginator = $list instanceof \Illuminate\Contracts\Pagination\Paginator
                 || $list instanceof \Illuminate\Pagination\LengthAwarePaginator;
-
     $totalCount = method_exists($list, 'total') ? (int)$list->total() : (int)$list->count();
 
+    // filtros simples (se o controller suportar)
     $q   = trim((string) request('q', ''));
     $ord = trim((string) request('ord', ''));
+
+    // subcategorias (pode vir via with('subcategories') ou variável $subcategories)
+    $subcats = isset($subcategories) ? $subcategories : ($category->subcategories ?? collect());
+    if (is_array($subcats)) $subcats = collect($subcats);
   @endphp
 
   {{-- Breadcrumb + título --}}
@@ -86,12 +100,37 @@
     </form>
   </div>
 
+  {{-- Subcategorias (se houver) --}}
+  @if($subcats && $subcats->count())
+    <div class="mb-3">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="text-muted small me-1">Subcategorias:</span>
+        @foreach($subcats->sortBy('name') as $sub)
+          @php
+            $sName = $sub->name ?? $sub->subcategory ?? null;
+            $sSlug = $sub->slug ?? ($sName ? Str::slug($sName) : null);
+          @endphp
+          @if($sSlug && $sName)
+            <a class="chip text-decoration-none" href="{{ route('subcategories.show', $sSlug) }}" title="{{ $sName }}">
+              <span class="small text-truncate" style="max-width:14rem">{{ $sName }}</span>
+            </a>
+          @endif
+        @endforeach
+      </div>
+    </div>
+  @endif
+
   @if($totalCount === 0)
     <div class="alert alert-info" role="alert">
       Nenhum negócio nesta categoria.
       @if($q !== '')
         <div class="mt-1 small">Tente remover o filtro ou usar outros termos.</div>
       @endif
+      @auth
+        <div class="mt-2">
+          <a class="btn btn-sm btn-primary" href="{{ route('business.create') }}">Cadastrar um negócio</a>
+        </div>
+      @endauth
     </div>
   @else
     {{-- Grade de cards --}}
@@ -107,8 +146,8 @@
           ];
           foreach ($cands as $p) {
             if (!$p) continue;
-            if (is_string($p) && \Illuminate\Support\Str::startsWith($p, ['http://','https://'])) { $img = $p; break; }
-            if (is_string($p) && \Illuminate\Support\Facades\Storage::disk('public')->exists($p)) { $img = \Illuminate\Support\Facades\Storage::url($p); break; }
+            if (is_string($p) && Str::startsWith($p, ['http://','https://'])) { $img = $p; break; }
+            if (is_string($p) && Storage::disk('public')->exists($p)) { $img = Storage::url($p); break; }
             if (is_string($p) && file_exists(public_path($p))) { $img = url($p); break; }
           }
           if (!$img) $img = asset('images/placeholder-800x600.png');
@@ -118,7 +157,7 @@
           $desc = $biz->short_description ?? $biz->description ?? '';
           $city = $biz->city_name ?? $biz->city ?? $biz->cidade ?? '';
           $cat  = $biz->category_name ?? $biz->category ?? $biz->cat_name ?? '';
-          $slug = \Illuminate\Support\Str::slug($name);
+          $slug = Str::slug($name);
           $url  = !empty($biz->biz_id) ? route('business.show', [$biz->biz_id, $slug]) : '#';
         @endphp
 

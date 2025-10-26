@@ -137,9 +137,61 @@
         </div>
       </div>
 
-      {{-- Galeria --}}
+      {{-- (OPCIONAL) Mini formulário de upload — visível somente para logados --}}
+      @auth
       <div class="card">
-        <div class="card-header bg-white"><strong>Galeria</strong></div>
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <strong>Enviar fotos para a galeria</strong>
+          <small class="text-muted">JPG/PNG/WEBP • até 2MB cada</small>
+        </div>
+        <div class="card-body">
+          <form method="POST"
+                action="{{ route('business.gallery.store', $biz->biz_id) }}"
+                enctype="multipart/form-data"
+                class="row g-2">
+            @csrf
+
+            <div class="col-12">
+              <input type="file"
+                     name="images[]"
+                     class="form-control @error('images') is-invalid @enderror @error('images.*') is-invalid @enderror"
+                     accept=".jpg,.jpeg,.png,.webp"
+                     multiple
+                     required>
+              @error('images')
+                <div class="invalid-feedback">{{ $message }}</div>
+              @enderror
+              @error('images.*')
+                <div class="invalid-feedback">{{ $message }}</div>
+              @enderror
+              <div class="form-text">
+                Selecione uma ou mais imagens. Elas aparecerão na galeria após o envio.
+              </div>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Enviar</button>
+              <a href="#galeria" class="btn btn-outline-secondary">Pular</a>
+            </div>
+          </form>
+        </div>
+      </div>
+      @endauth
+
+      {{-- Galeria --}}
+      <div id="galeria" class="card">
+        <div class="card-header bg-white d-flex align-items-center justify-content-between">
+          <strong>Galeria</strong>
+
+          @auth
+            @if (Route::has('business.gallery.index') && !empty($biz->biz_id))
+              <a href="{{ route('business.gallery.index', $biz->biz_id) }}"
+                 class="btn btn-sm btn-outline-primary">
+                Gerenciar galeria
+              </a>
+            @endif
+          @endauth
+        </div>
         <div class="card-body">
           @include('business._gallery', ['business' => ($business ?? ($biz ?? ($item ?? ($company ?? null))))])
         </div>
@@ -183,6 +235,8 @@
               <img src="{{ $sideImg }}" alt="{{ $biz->business_name }}" class="img-fluid w-100 h-100" style="object-fit:cover;">
             </div>
           </div>
+
+          @include('partials.ads', ['slot' => 'ad2'])
 
           {{-- Contatos --}}
           @php
@@ -368,4 +422,7 @@
     </div>
   @endif
 </div>
+
+@include('partials.ads', ['slot' => 'ad3'])
+
 @endsection
