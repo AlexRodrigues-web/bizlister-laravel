@@ -41,3 +41,7 @@ _reports/
 reports/
 *.zip
 storage/framework/cache/data/
+# dev-only / diagnósticos locais
+_probe_*.php
+seed_check.php
+routes.json
